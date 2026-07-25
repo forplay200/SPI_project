@@ -126,6 +126,7 @@ class MediaMetadata:
     video_codec: str | None = None
     audio_codec: str | None = None
     display_rotation: int = 0
+    creation_time: str | None = None
 
 
 @dataclass(frozen=True)
@@ -203,6 +204,14 @@ class AutomationOutcome(str, Enum):
     DRAFT_RENDERED_WITH_UNVERIFIED_SYNC = "DRAFT_RENDERED_WITH_UNVERIFIED_SYNC"
 
 
+class CameraGroupingState(str, Enum):
+    CAMERA_GROUP_CONFIRMED = "CAMERA_GROUP_CONFIRMED"
+    CAMERA_GROUP_SUGGESTED = "CAMERA_GROUP_SUGGESTED"
+    CAMERA_GROUP_LOW_CONFIDENCE = "CAMERA_GROUP_LOW_CONFIDENCE"
+    NO_RELIABLE_CAMERA_GROUP = "NO_RELIABLE_CAMERA_GROUP"
+    DERIVED_OUTPUTS_ONLY = "DERIVED_OUTPUTS_ONLY"
+
+
 @dataclass(frozen=True)
 class DiscoveredVideo:
     camera_id: str | None
@@ -219,6 +228,47 @@ class DiscoveredVideo:
     classification: str
     usable: bool
     warnings: tuple[str, ...] = ()
+    creation_time: str | None = None
+
+
+@dataclass(frozen=True)
+class PairwiseCameraScore:
+    camera_a: str
+    camera_b: str
+    path_a: str
+    path_b: str
+    filename_time_distance_seconds: float | None
+    creation_time_distance_seconds: float | None
+    duration_compatibility: float
+    common_usable_duration_seconds: float
+    audio_available: bool
+    audio_correlation: float
+    estimated_offset_seconds: float | None
+    offset_stability: float
+    shared_transient_count: int
+    shared_transient_strength: float
+    source_confidence: float
+    derived_duplicate_likelihood: float
+    total_score: float
+    confidence: str
+    accepted: bool
+    reason: str
+    window_offsets_seconds: tuple[float, ...] = ()
+    window_correlations: tuple[float, ...] = ()
+
+
+@dataclass(frozen=True)
+class CameraGroupingResult:
+    state: CameraGroupingState
+    selected_videos: tuple[DiscoveredVideo, ...]
+    pair_scores: tuple[PairwiseCameraScore, ...]
+    eligible_count: int
+    excluded_derived_count: int
+    analysed_pair_count: int
+    best_score: float | None
+    confidence: str
+    reason: str
+    report_path: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -267,3 +317,8 @@ class PreparationResult:
     render_permitted: bool
     smoke: bool
     warnings: tuple[str, ...] = ()
+    camera_group_state: str = "NOT_RUN"
+    camera_group_score: float | None = None
+    analysed_pair_count: int = 0
+    selected_camera_paths: tuple[str, ...] = ()
+    excluded_derived_count: int = 0

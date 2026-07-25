@@ -26,6 +26,14 @@ def audio_at(timestamp: float) -> np.ndarray:
     return samples
 
 
+def grouping_audio(offset: float = 0.0) -> np.ndarray:
+    samples = np.zeros(SAMPLE_RATE * 18, dtype=np.float32)
+    for timestamp in (1.0, 6.0, 11.0, 16.0):
+        start = round((timestamp + offset) * SAMPLE_RATE)
+        samples[start : start + round(0.03 * SAMPLE_RATE)] = 1
+    return samples
+
+
 class AutoPipelineTests(unittest.TestCase):
     def create_inputs(self, root: Path) -> tuple[Path, Path]:
         input_path = root / "input"
@@ -47,7 +55,7 @@ class AutoPipelineTests(unittest.TestCase):
         first, _ = self.create_inputs(root)
 
         def decoded(path: Path, **_: object) -> np.ndarray:
-            return audio_at(1.0 if path == first else 1.2)
+            return grouping_audio(0.0 if path == first else 0.2)
 
         ffprobe_payload = MediaMetadata(
             path=first,
@@ -64,10 +72,15 @@ class AutoPipelineTests(unittest.TestCase):
             patch(
                 "src.video_discovery.probe_video",
                 side_effect=lambda path, **_: MediaMetadata(
-                    **{**ffprobe_payload.__dict__, "path": path}
+                    **{
+                        **ffprobe_payload.__dict__,
+                        "path": path,
+                        "width": 1920 if path == first else 1280,
+                    }
                 ),
             ),
             patch("src.sync_assistant.decode_audio_window", side_effect=decoded),
+            patch("src.camera_grouping.decode_audio_window", side_effect=decoded),
             patch("src.auto_pipeline.prepare_pipeline"),
         ):
             return prepare_automatic(
@@ -143,12 +156,20 @@ class AutoPipelineTests(unittest.TestCase):
                 patch(
                     "src.video_discovery.probe_video",
                     side_effect=lambda path, **_: MediaMetadata(
-                        **{**metadata.__dict__, "path": path}
+                        **{
+                            **metadata.__dict__,
+                            "path": path,
+                            "width": 1920 if path == first else 1280,
+                        }
                     ),
                 ),
                 patch(
                     "src.sync_assistant.decode_audio_window",
-                    return_value=audio_at(1.0),
+                    return_value=grouping_audio(),
+                ),
+                patch(
+                    "src.camera_grouping.decode_audio_window",
+                    return_value=grouping_audio(),
                 ),
                 patch("src.auto_pipeline.prepare_pipeline", return_value=prepared),
                 patch(
@@ -169,6 +190,47 @@ class AutoPipelineTests(unittest.TestCase):
             )
             self.assertIsNotNone(rendered)
             approve.assert_not_called()
+
+    def test_explicit_camera_selection_bypasses_only_grouping(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first, second = self.create_inputs(root)
+            metadata = MediaMetadata(
+                path=first,
+                duration_seconds=20,
+                width=1280,
+                height=720,
+                fps=30,
+                has_video=True,
+                has_audio=True,
+                video_codec="h264",
+                audio_codec="aac",
+            )
+            with (
+                patch(
+                    "src.video_discovery.probe_video",
+                    side_effect=lambda path, **_: MediaMetadata(
+                        **{**metadata.__dict__, "path": path}
+                    ),
+                ),
+                patch(
+                    "src.sync_assistant.decode_audio_window",
+                    return_value=grouping_audio(),
+                ),
+                patch("src.auto_pipeline.prepare_pipeline"),
+            ):
+                result = prepare_automatic(
+                    project_root=root,
+                    input_path=root / "input",
+                    requested_duration_seconds=18,
+                    title="Explicit",
+                    allow_smoke=True,
+                    camera_files=(Path(first.name), Path(second.name)),
+                )
+            self.assertTrue(result.render_permitted)
+            self.assertEqual(result.camera_group_state, "CAMERA_GROUP_CONFIRMED")
+            self.assertEqual(result.analysed_pair_count, 0)
+            self.assertEqual(len(result.selected_camera_paths), 2)
 
 
 if __name__ == "__main__":

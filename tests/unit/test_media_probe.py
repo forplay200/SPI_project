@@ -44,6 +44,26 @@ class MediaProbeTests(unittest.TestCase):
         self.assertEqual(metadata.fps, 30)
         self.assertTrue(metadata.has_audio)
 
+    def test_parses_creation_time_for_grouping_evidence(self) -> None:
+        metadata = parse_ffprobe_output(
+            Path("sample.mp4"),
+            {
+                "format": {
+                    "duration": "10",
+                    "tags": {"creation_time": "2026-06-19T07:15:29Z"},
+                },
+                "streams": [
+                    {
+                        "codec_type": "video",
+                        "width": 1280,
+                        "height": 720,
+                        "avg_frame_rate": "30/1",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(metadata.creation_time, "2026-06-19T07:15:29Z")
+
     def test_rejects_no_video(self) -> None:
         with self.assertRaises(MediaProbeError):
             parse_ffprobe_output(

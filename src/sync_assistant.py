@@ -133,6 +133,11 @@ def _energy_envelope(samples: np.ndarray) -> np.ndarray:
     return np.sqrt(np.mean(np.square(frames, dtype=np.float64), axis=1))
 
 
+def audio_energy_envelope(samples: np.ndarray) -> np.ndarray:
+    """Return the grouping/sync RMS envelope for already-decoded mono audio."""
+    return _energy_envelope(samples)
+
+
 def _best_envelope_lag(
     master: np.ndarray, other: np.ndarray, *, maximum_lag_seconds: float = 3.0
 ) -> tuple[int, float]:
@@ -162,6 +167,21 @@ def _best_envelope_lag(
         else 0.0
     )
     return lag, max(-1.0, min(1.0, correlation))
+
+
+def estimate_envelope_offset(
+    master: np.ndarray,
+    other: np.ndarray,
+    *,
+    maximum_offset_seconds: float = 5.0,
+) -> tuple[float, float]:
+    """Estimate `other - master` offset and normalized envelope correlation."""
+    lag, correlation = _best_envelope_lag(
+        master,
+        other,
+        maximum_lag_seconds=maximum_offset_seconds,
+    )
+    return round(lag * FRAME_SECONDS, 6), correlation
 
 
 def _shared_anchor(master: np.ndarray, other: np.ndarray, lag: int) -> tuple[int, int]:
@@ -366,6 +386,7 @@ def analyse_sync(
     }
     complete = len(timestamps) == len(cameras)
     payload: dict[str, object] = {
+        "generated_by": "automatic_preparation_layer",
         "master_camera": master_camera,
         "cue_type": ("shared_audio_transient" if complete else "no_reliable_candidate"),
         "cue_description": (

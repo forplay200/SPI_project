@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import shutil
 import subprocess
 from dataclasses import asdict, dataclass
@@ -28,7 +29,23 @@ def resolve_executable(name: str, explicit_path: Path | None = None) -> str | No
     if explicit_path is not None:
         candidate = explicit_path.resolve()
         return str(candidate) if candidate.is_file() else None
-    return shutil.which(name)
+    system_path = shutil.which(name)
+    if system_path:
+        return system_path
+    executable_name = f"{name}.exe" if os.name == "nt" else name
+    local_temp = Path.cwd() / "temp"
+    if local_temp.is_dir():
+        candidates = sorted(
+            (
+                path
+                for path in local_temp.rglob(executable_name)
+                if path.is_file() and path.parent.name.casefold() == "bin"
+            ),
+            key=lambda path: path.as_posix().casefold(),
+        )
+        if candidates:
+            return str(candidates[0].resolve())
+    return None
 
 
 def _works(executable: str | None, version_flag: str = "-version") -> bool:

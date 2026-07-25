@@ -78,6 +78,11 @@ def parse_ffprobe_output(path: Path, payload: dict[str, Any]) -> MediaMetadata:
                 except (TypeError, ValueError):
                     pass
                 break
+    creation_time = None
+    for tag_source in (format_data.get("tags"), video.get("tags")):
+        if isinstance(tag_source, dict) and tag_source.get("creation_time"):
+            creation_time = str(tag_source["creation_time"])
+            break
     if duration <= 0 or width <= 0 or height <= 0 or fps <= 0:
         raise MediaProbeError(
             f"Input metadata must have positive duration, dimensions, and frame rate: {path}"
@@ -97,6 +102,7 @@ def parse_ffprobe_output(path: Path, payload: dict[str, Any]) -> MediaMetadata:
             else None
         ),
         display_rotation=rotation,
+        creation_time=creation_time,
     )
 
 

@@ -1,11 +1,13 @@
 {
-  "master_camera": "camera_04",
+  "generated_by": "automatic_preparation_layer",
+  "master_camera": "camera_02",
   "cue_type": "shared_audio_transient",
   "cue_description": "Deterministic local transient candidates; every value requires human verification and is not automatically accepted as a deliberate clap.",
   "acceptance_status": "needs_human_confirmation",
   "clap_timestamps": {
+    "camera_02": 2.31,
     "camera_04": 4.27,
-    "camera_06": 4.85
+    "camera_05": 1.47
   },
   "verification_threshold_ms": 100,
   "requires_human_verification": true,
@@ -13,13 +15,61 @@
   "confidence_threshold": 0.65,
   "camera_analyses": [
     {
+      "camera_id": "camera_02",
+      "candidates": [
+        {
+          "timestamp_seconds": 2.31,
+          "confidence": 0.794,
+          "cue_type": "shared_audio_transient",
+          "supporting_metric": 0.794
+        },
+        {
+          "timestamp_seconds": 7.59,
+          "confidence": 0.259,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 7.112
+        },
+        {
+          "timestamp_seconds": 2.31,
+          "confidence": 0.19,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 6.274
+        },
+        {
+          "timestamp_seconds": 8.81,
+          "confidence": 0.12,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 5.439
+        },
+        {
+          "timestamp_seconds": 3.13,
+          "confidence": 0.1,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 5.206
+        },
+        {
+          "timestamp_seconds": 4.19,
+          "confidence": 0.084,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 5.01
+        }
+      ],
+      "selected_timestamp_seconds": 2.31,
+      "confidence": 0.794,
+      "state": "shared_audio_transient",
+      "requires_human_verification": true,
+      "warnings": [
+        "Cross-camera envelope correlation supports this shared transient, but it is not a verified clap."
+      ]
+    },
+    {
       "camera_id": "camera_04",
       "candidates": [
         {
           "timestamp_seconds": 4.27,
-          "confidence": 0.739,
+          "confidence": 0.794,
           "cue_type": "shared_audio_transient",
-          "supporting_metric": 0.739
+          "supporting_metric": 0.794
         },
         {
           "timestamp_seconds": 4.09,
@@ -47,7 +97,7 @@
         }
       ],
       "selected_timestamp_seconds": 4.27,
-      "confidence": 0.739,
+      "confidence": 0.794,
       "state": "shared_audio_transient",
       "requires_human_verification": true,
       "warnings": [
@@ -55,29 +105,41 @@
       ]
     },
     {
-      "camera_id": "camera_06",
+      "camera_id": "camera_05",
       "candidates": [
         {
-          "timestamp_seconds": 4.85,
-          "confidence": 0.739,
+          "timestamp_seconds": 1.47,
+          "confidence": 0.771,
           "cue_type": "shared_audio_transient",
-          "supporting_metric": 0.739
+          "supporting_metric": 0.771
         },
         {
-          "timestamp_seconds": 4.75,
-          "confidence": 0.055,
+          "timestamp_seconds": 1.31,
+          "confidence": 0.375,
           "cue_type": "low_confidence_candidate",
-          "supporting_metric": 4.662
+          "supporting_metric": 8.5
         },
         {
-          "timestamp_seconds": 12.51,
-          "confidence": 0.019,
+          "timestamp_seconds": 3.37,
+          "confidence": 0.237,
           "cue_type": "low_confidence_candidate",
-          "supporting_metric": 4.224
+          "supporting_metric": 6.84
+        },
+        {
+          "timestamp_seconds": 6.75,
+          "confidence": 0.181,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 6.173
+        },
+        {
+          "timestamp_seconds": 9.49,
+          "confidence": 0.006,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 4.071
         }
       ],
-      "selected_timestamp_seconds": 4.85,
-      "confidence": 0.739,
+      "selected_timestamp_seconds": 1.47,
+      "confidence": 0.771,
       "state": "shared_audio_transient",
       "requires_human_verification": true,
       "warnings": [

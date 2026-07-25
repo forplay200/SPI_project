@@ -92,6 +92,7 @@ def discover_videos(
                     classification="likely_derived_output",
                     usable=False,
                     warnings=("Excluded by generated/derived filename policy.",),
+                    creation_time=None,
                 )
             )
             continue
@@ -118,6 +119,7 @@ def discover_videos(
                     classification="unreadable_media",
                     usable=False,
                     warnings=(str(exc),),
+                    creation_time=None,
                 )
             )
             continue
@@ -143,6 +145,7 @@ def discover_videos(
                 classification="likely_source",
                 usable=True,
                 warnings=tuple(warnings),
+                creation_time=metadata.creation_time,
             )
         )
 

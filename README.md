@@ -44,11 +44,14 @@ python -m src.main auto `
   --title "Kindergarten Graduation Ceremony"
 ```
 
-The command discovers and probes local videos, conservatively groups files that
-share event-time filename evidence, analyses only the first 15 seconds of local
-audio, generates configuration and an EDL, validates them through the existing
-pipeline, and renders a draft only when safe. It never reviews, approves,
-publishes, or uploads a video.
+The command discovers and probes local videos, scores every eligible pair using
+local metadata and low-cost audio evidence, selects the best supported
+multi-camera group, analyses the first 15 seconds for synchronization cues,
+generates configuration and an EDL, validates them through the existing pipeline,
+and renders a draft only when safe. Filenames are supporting evidence only:
+different prefixes, separators, Unicode names, and device time-zone differences
+do not prevent audio comparison. The command never reviews, approves, publishes,
+or uploads a video.
 
 The equivalent one-line command is:
 
@@ -62,14 +65,40 @@ Generated files are written to:
 - `config/generated_sync.json`
 - `edl/generated_editing_decisions.json`
 - `evidence/reports/video_discovery.json`
+- `evidence/reports/camera_grouping.json`
 - `evidence/reports/sync_candidates.json`
 - `evidence/reports/generated_edl.json`
 - `evidence/reports/automatic_preparation.json`
 - `output/draft/` only when rendering is permitted
 
-Generated configuration and EDL files do not replace different existing content
-unless `--overwrite` is supplied. User-authored `config/project.json`,
-`config/sync.json`, and `edl/editing_decisions.json` remain untouched.
+Files carrying the automation layer's provenance may be refreshed by a later
+automatic run. Other content at a generated path requires `--overwrite`.
+User-authored `config/project.json`, `config/sync.json`, and
+`edl/editing_decisions.json` remain untouched.
+
+### How automatic camera grouping works
+
+Each source pair receives a transparent deterministic score recorded in
+`camera_grouping.json`. Signals include normalized filename time, FFprobe creation
+time, duration and common coverage, audio availability, envelope
+cross-correlation, estimated offset, shared transient agreement, offset stability
+across multiple windows, source confidence, and a derived-duplicate penalty. Audio
+is decoded once per file to 8 kHz mono and cached for all pair comparisons; video
+frames are not decoded for grouping.
+
+Similar duration, codec, resolution, or filename alone cannot accept a pair.
+Obvious `draft`, `final`, `rendered`, and `output` names are excluded by
+default, and near-identical zero-offset stream copies receive a derived-copy
+penalty. The report lists every accepted and rejected pair, its individual
+signals, score, estimated offset, confidence, and reason.
+
+Grouping reports `CAMERA_GROUP_CONFIRMED`, `CAMERA_GROUP_SUGGESTED`,
+`CAMERA_GROUP_LOW_CONFIDENCE`, `NO_RELIABLE_CAMERA_GROUP`, or
+`DERIVED_OUTPUTS_ONLY`. High-confidence groups may continue automatically;
+medium-confidence groups are limited to an explicitly labelled smoke run; low
+confidence stops at camera selection. Grouping confidence means the recordings
+probably cover the same event. It does **not** verify that any transient is a
+deliberate clap or satisfy the manual ±100 ms synchronization check.
 
 ## Assisted preparation workflow
 
@@ -98,6 +127,21 @@ python -m src.main generate-edl `
   --config config/generated_project.json `
   --sync config/generated_sync.json `
   --duration 90
+```
+
+If automatic grouping is inconclusive, explicitly select two to four discovered
+sources. This bypasses only group selection; probing, synchronization analysis,
+duration and EDL validation, smoke labels, privacy controls, and approval
+restrictions still apply:
+
+```powershell
+python -m src.main auto `
+  --input input `
+  --camera-file "video_20260619_151529.mp4" `
+  --camera-file "VID_20260619_151529.mp4" `
+  --duration 18 `
+  --title "Kindergarten Graduation Demo" `
+  --allow-smoke
 ```
 
 If a human identifies the deliberate clap, record each verified source timestamp

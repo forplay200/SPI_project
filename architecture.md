@@ -230,6 +230,11 @@ Coordinates pipeline stages without implementing domain logic.
 ### Proposed Commands
 
 ```bash
+python -m src.main inspect --input input
+python -m src.main detect-sync --input input
+python -m src.main generate-edl --config config/generated_project.json --sync config/generated_sync.json --duration 90
+python -m src.main prepare --input input --duration 90 --title "Kindergarten Graduation Ceremony"
+python -m src.main auto --input input --duration 90 --title "Kindergarten Graduation Ceremony"
 python -m src.main validate --config config/project.json --sync config/sync.json --edl edl/editing_decisions.json
 python -m src.main render --config config/project.json --sync config/sync.json --edl edl/editing_decisions.json
 python -m src.main review --draft output/draft/project_draft.mp4
@@ -1197,7 +1202,7 @@ Local input directory
 Video discovery and safe FFprobe inspection
         |
         v
-Conservative camera-group proposal
+Pairwise evidence-based camera grouping
         |
         v
 Local audio sync-candidate assistant
@@ -1226,12 +1231,57 @@ frame rate, video/audio codecs, audio availability, classification, and warnings
 Unreadable or zero-duration files remain visible as rejected report entries and
 receive no fabricated camera ID.
 
-Automatic grouping is deliberately conservative. Files must share specific
-date-and-time filename evidence before they are proposed as related views. A
-shared date alone is insufficient. When relatedness cannot be supported, the
-outcome is `NEEDS_CAMERA_SELECTION`; no multi-camera configuration is fabricated.
+Filename date/time is normalized when present, including compact, separated,
+Unicode-prefixed, `VID`, and `video` variants. It is supporting evidence only:
+missing timestamps or hour-scale device time-zone differences do not reject a
+pair before local audio analysis.
 
-### 22.2 Synchronization assistant: `src/sync_assistant.py`
+### 22.2 Camera grouping: `src/camera_grouping.py`
+
+Every eligible two-file combination is analyzed. Each audio stream is decoded
+once, locally, to a bounded 8 kHz mono representation and cached, so two to ten
+inputs require one decode per source rather than one decode per pair. Grouping
+does not decode full-resolution video.
+
+For each pair the component records:
+
+- normalized filename and FFprobe creation-time distance;
+- duration compatibility and honest common coverage;
+- audio availability and normalized envelope cross-correlation;
+- the best bounded time offset;
+- shared transient count and strength;
+- offset consistency across as many as three audio windows;
+- source confidence; and
+- a derived-output or near-identical-copy penalty.
+
+The documented score weights are 0.42 audio correlation, 0.13 offset stability,
+0.10 shared transients, 0.06 filename time, 0.04 creation time, 0.08 duration
+compatibility, 0.08 common duration, 0.04 audio availability, and 0.05 source
+confidence. A derived duplicate can subtract 0.80. Audio evidence and sufficient
+duration are mandatory: matching filenames, duration, codec, or resolution alone
+cannot accept a pair.
+
+The strongest accepted pair anchors selection. A third or fourth source is added
+only when every pair relationship is high-confidence and the weakest relationship
+is within 0.05 of the strongest pair score. Ties use stable camera IDs. This
+prevents a large but weak clique from displacing a better-supported pair while
+still allowing coherent three- or four-camera groups.
+
+Obvious generated names remain excluded during discovery. A practical duplicate
+check also considers near-identical duration, audio identity at zero offset, and
+matching stream characteristics, so a transcoded or copied output is not counted
+as an independent camera angle. The complete report is written to
+`evidence/reports/camera_grouping.json` with every pair, signal, score, offset,
+confidence, and acceptance or rejection reason.
+
+Grouping states are `CAMERA_GROUP_CONFIRMED`, `CAMERA_GROUP_SUGGESTED`,
+`CAMERA_GROUP_LOW_CONFIDENCE`, `NO_RELIABLE_CAMERA_GROUP`, and
+`DERIVED_OUTPUTS_ONLY`. Medium confidence can support only explicit smoke mode;
+low confidence returns `NEEDS_CAMERA_SELECTION` and lists the highest rejected
+pairs. Repeated `--camera-file` values provide a fallback selection but bypass
+none of probing, sync, duration, EDL, privacy, smoke, or approval controls.
+
+### 22.3 Synchronization assistant: `src/sync_assistant.py`
 
 The assistant decodes only a configurable initial audio window (15 seconds by
 default) to 8 kHz mono samples using local FFmpeg. It calculates short-time RMS
@@ -1254,7 +1304,12 @@ must be confirmed before the configuration becomes `manual_clap` / `verified`.
 The existing constant-offset formula and ±100 ms manual acceptance target remain
 unchanged.
 
-### 22.3 Project and EDL generation: `src/edl_generator.py`
+Camera grouping confidence establishes only likely shared event content. It does
+not prove that a transient is a deliberate clap. Synchronization confidence,
+`requires_human_verification`, and the manual ±100 ms acceptance rule remain
+separate.
+
+### 22.4 Project and EDL generation: `src/edl_generator.py`
 
 Generated project configuration uses a deterministic master camera, 1280×720 at
 30 fps, MoviePy primary rendering, and enabled FFmpeg fallback. Generated files
@@ -1275,11 +1330,17 @@ When duration is impossible, the report identifies the maximum honest duration
 and limiting sources. Footage is never looped, frozen, slowed, duplicated, or
 padded to manufacture compliance.
 
-### 22.4 Orchestration: `src/auto_pipeline.py`
+### 22.5 Orchestration: `src/auto_pipeline.py`
 
 `prepare` performs discovery, metadata inspection, camera grouping, sync
 assistance, project/EDL generation where safe, serialized-artifact validation, and
 an actionable summary, then stops before rendering.
+
+The orchestrator passes the selected evidence-backed group to the existing sync
+assistant. It prints the number of analyzed pairs, excluded derived outputs,
+grouping state, score, and selected paths. Generated artifacts carrying the
+automation provenance can be refreshed on a repeat run; user-authored manual
+configuration is never replaced implicitly.
 
 `auto` runs the same preparation and may invoke the existing atomic draft renderer.
 Automatically detected but unverified synchronization is included in the project

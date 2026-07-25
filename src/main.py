@@ -10,6 +10,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from .auto_pipeline import prepare_automatic, run_automatic
+from .camera_grouping import group_camera_sources
 from .edl_generator import generate_edl
 from .errors import PipelineError, PreparationError
 from .logging_config import configure_logging
@@ -27,7 +28,7 @@ from .review import (
 from .sync import apply_sync, load_sync_config
 from .sync_assistant import analyse_sync, confirm_sync_timestamp
 from .validate_inputs import load_project_config
-from .video_discovery import discover_videos, select_related_camera_group
+from .video_discovery import discover_videos
 
 LOGGER = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
     detect_sync.add_argument("--ffmpeg", type=Path)
     detect_sync.add_argument("--ffprobe", type=Path)
     detect_sync.add_argument("--overwrite", action="store_true")
+    detect_sync.add_argument("--camera-file", type=Path, action="append", default=[])
 
     confirm_sync = subparsers.add_parser(
         "confirm-sync", help="Record one human-verified clap timestamp."
@@ -112,6 +114,7 @@ def build_parser() -> argparse.ArgumentParser:
         command.add_argument("--overwrite", action="store_true")
         command.add_argument("--ffmpeg", type=Path)
         command.add_argument("--ffprobe", type=Path)
+        command.add_argument("--camera-file", type=Path, action="append", default=[])
 
     prepare = subparsers.add_parser(
         "prepare", help="Discover, analyse sync, generate, and validate artefacts."
@@ -204,11 +207,19 @@ def run(args: argparse.Namespace) -> int:
                 project_root=project_root,
                 ffprobe_executable=args.ffprobe,
             )
-            group = select_related_camera_group(discovery.videos)
+            grouping = group_camera_sources(
+                discovery.videos,
+                input_path=args.input,
+                ffmpeg_executable=args.ffmpeg,
+                explicit_camera_files=tuple(args.camera_file),
+                report_path=Path("evidence/reports/camera_grouping.json"),
+            )
+            group = grouping.selected_videos
             if len(group) < 2:
                 raise PreparationError(
-                    "No related camera group could be established safely. Use "
-                    "--config with an explicitly reviewed camera selection."
+                    f"No related camera group could be established safely after "
+                    f"{grouping.analysed_pair_count} pair analyses. "
+                    f"{grouping.reason}"
                 )
             cameras = tuple(
                 CameraSource(
@@ -290,6 +301,7 @@ def run(args: argparse.Namespace) -> int:
             "allow_smoke": args.allow_smoke,
             "include_derived": args.include_derived,
             "overwrite": args.overwrite,
+            "camera_files": tuple(args.camera_file),
         }
         if args.command == "prepare":
             result = prepare_automatic(**options)
@@ -298,6 +310,21 @@ def run(args: argparse.Namespace) -> int:
             result, _, rendered = run_automatic(**options)
         print(f"Discovered videos: {result.discovered_count}")
         print(f"Usable camera candidates: {result.usable_camera_count}")
+        print(f"Excluded derived outputs: {result.excluded_derived_count}")
+        print(f"Analysed camera pairs: {result.analysed_pair_count}")
+        print(f"Camera group state: {result.camera_group_state}")
+        print(
+            "Best camera group score: "
+            + (
+                f"{result.camera_group_score:.3f}"
+                if result.camera_group_score is not None
+                else "n/a"
+            )
+        )
+        print(
+            "Selected camera group: "
+            + (", ".join(result.selected_camera_paths) or "none")
+        )
         print(f"Master camera: {result.master_camera or 'none'}")
         print(f"Outcome: {result.outcome.value}")
         print(f"Sync status: {result.sync_status}")

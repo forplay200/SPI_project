@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -259,12 +260,14 @@ class PipelineIntegrationTests(unittest.TestCase):
             input_path = root / "input"
             input_path.mkdir()
 
-            def create_clap_source(path: Path, color: str, clap_time: float) -> None:
-                audio = (
-                    "aevalsrc=0.01*sin(2*PI*440*t)+"
-                    f"if(between(t\\,{clap_time}\\,{clap_time + 0.02})\\,0.9\\,0)"
-                    ":s=8000:d=92"
+            def create_event_source(
+                path: Path, color: str, transient_times: tuple[float, ...]
+            ) -> None:
+                transients = "+".join(
+                    f"if(between(t\\,{cue}\\,{cue + 0.03})\\,0.9\\,0)"
+                    for cue in transient_times
                 )
+                audio = f"aevalsrc=0.01*sin(2*PI*440*t)+{transients}:s=8000:d=92"
                 completed = subprocess.run(
                     [
                         str(FFMPEG),
@@ -298,8 +301,13 @@ class PipelineIntegrationTests(unittest.TestCase):
                 )
                 self.assertEqual(completed.returncode, 0, completed.stderr)
 
-            create_clap_source(input_path / "cam_a_20260726_120000.mp4", "blue", 1.0)
-            create_clap_source(input_path / "cam_b_20260726_120000.mp4", "green", 1.3)
+            camera_a = input_path / "AlphaTake.mp4"
+            camera_b = input_path / "摄像机B.mov"
+            unrelated = input_path / "unrelated_source.mp4"
+            create_event_source(camera_a, "blue", (1.0, 22.0, 42.0))
+            create_event_source(camera_b, "green", (1.3, 22.3, 42.3))
+            create_event_source(unrelated, "red", (3.0, 17.0, 37.0))
+            shutil.copy2(camera_a, input_path / "automatic_final.mp4")
             with patch(
                 "src.moviepy_renderer.MoviePyRenderer.render",
                 side_effect=MoviePyRenderError(
@@ -317,6 +325,34 @@ class PipelineIntegrationTests(unittest.TestCase):
             self.assertEqual(
                 result.outcome,
                 AutomationOutcome.DRAFT_RENDERED_WITH_UNVERIFIED_SYNC,
+            )
+            self.assertEqual(result.analysed_pair_count, 3)
+            self.assertEqual(result.excluded_derived_count, 1)
+            self.assertEqual(
+                {Path(path).name for path in result.selected_camera_paths},
+                {camera_a.name, camera_b.name},
+            )
+            grouping = json.loads(
+                (root / "evidence" / "reports" / "camera_grouping.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            relevant_pair = next(
+                pair
+                for pair in grouping["pairs"]
+                if {Path(pair["path_a"]).name, Path(pair["path_b"]).name}
+                == {camera_a.name, camera_b.name}
+            )
+            self.assertTrue(relevant_pair["accepted"])
+            self.assertAlmostEqual(
+                abs(relevant_pair["estimated_offset_seconds"]), 0.3, delta=0.08
+            )
+            self.assertTrue(
+                all(unrelated.name not in path for path in grouping["selected_paths"])
+            )
+            self.assertTrue((root / "config" / "generated_project.json").is_file())
+            self.assertTrue(
+                (root / "edl" / "generated_editing_decisions.json").is_file()
             )
             self.assertIsNotNone(rendered)
             render_result, metadata, evidence_path = rendered

@@ -1,6 +1,6 @@
 {
-  "project": "kindergarten-graduation-ceremony-unverified-sync-smoke",
-  "master_camera": "camera_04",
+  "project": "kindergarten-graduation-demo-unverified-sync-smoke",
+  "master_camera": "camera_02",
   "renderer": "moviepy",
   "allow_ffmpeg_fallback": true,
   "output": {
@@ -11,12 +11,12 @@
     "audio_codec": "aac"
   },
   "duration_policy": {
-    "min_seconds": 17.75,
-    "max_seconds": 18.25,
+    "min_seconds": 19.75,
+    "max_seconds": 20.25,
     "includes_title_and_credits": true
   },
   "title": {
-    "text": "Kindergarten Graduation Ceremony",
+    "text": "Kindergarten Graduation Demo",
     "duration": 1.0
   },
   "credits": {
@@ -25,12 +25,17 @@
   },
   "cameras": [
     {
+      "id": "camera_02",
+      "path": "input/VID20260619151534.mp4"
+    },
+    {
       "id": "camera_04",
       "path": "input/VID_20260619_151529.mp4"
     },
     {
-      "id": "camera_06",
-      "path": "input/video_20260619_151529.mp4"
+      "id": "camera_05",
+      "path": "input/VID_20260619_151532 1.mp4"
     }
-  ]
+  ],
+  "generated_by": "automatic_preparation_layer"
 }

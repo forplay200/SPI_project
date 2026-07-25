@@ -10,9 +10,9 @@
 
 ## 2. Current Status
 
-- Current milestone: Automatic Preparation Layer
-- Overall status: Automatic Preparation Layer complete and verified; approved footage remains smoke-only because it is short and has no verified clap
-- Last completed task: Completed real-footage auto smoke and synthetic 90-second automatic integration rendering
+- Current milestone: Evidence-based Automatic Multi-Camera Grouping
+- Overall status: Automatic grouping and the one-command workflow are complete and verified; approved footage remains smoke-only because it is short and has no verified clap
+- Last completed task: Completed real-footage 21-pair grouping/auto smoke and a synthetic relevant/unrelated/derived-source 90-second integration render
 - Task currently in progress: None
 - Next recommended task: Human-review the reported sync regions or supply longer multi-camera footage with a deliberate clap for the academic final
 
@@ -48,7 +48,7 @@
 ### Automatic Preparation Layer (2026-07-26)
 
 - [x] Added recursive local discovery for MP4/MOV/MKV, output/temp/evidence exclusion, derived-name filtering, safe FFprobe metadata, display rotation, and stable deterministic camera IDs (`src/video_discovery.py`, `src/media_probe.py`)
-- [x] Added conservative filename event-time grouping; the approved `151529` pair is selected while same-date-only files are not silently grouped (`src/video_discovery.py`)
+- [x] Initially added conservative filename event-time grouping, then superseded it with the evidence-based grouping stage below; the helper remains only for compatibility (`src/video_discovery.py`)
 - [x] Added non-destructive generated JSON handling; different generated config/EDL content requires `--overwrite` (`src/json_utils.py`)
 - [x] Added deterministic local audio decoding, short-time energy/transient ranking, cross-camera envelope correlation, confidence states, no-timestamp low-confidence behavior, and human confirmation (`src/sync_assistant.py`)
 - [x] Added typed automation outcome, discovery, sync candidate, and preparation result contracts (`src/models.py`)
@@ -59,6 +59,18 @@
 - [x] Added unit coverage for discovery, filtering, stable IDs, generated config, sync candidates/offsets/confidence/no-audio/manual confirmation, deterministic EDLs, duration boundaries, orchestration, smoke labels, and non-approval (`tests/unit/`)
 - [x] Added and executed a temporary synthetic 90-second two-camera automatic integration with a deterministic 300 ms audio cue offset and real FFmpeg fallback (`tests/integration/test_pipeline.py`)
 - [x] Executed the approved-footage 18-second one-command auto smoke render; result is explicitly non-compliant and unverified-sync
+
+### Evidence-based Camera Grouping (2026-07-26)
+
+- [x] Reproduced the previous `NEEDS_CAMERA_SELECTION` result before changes: 10 discovered, 0 selected, filename evidence rejected all groups.
+- [x] Added normalized compact, separated, prefixed, and Unicode filename timestamps plus FFprobe media creation time (`src/camera_grouping.py`, `src/media_probe.py`).
+- [x] Added cached local 8 kHz mono analysis, all-pair envelope correlation, bounded offsets, shared transients, multi-window stability, transparent weighted scores, and rejection reasons (`src/camera_grouping.py`).
+- [x] Added deterministic strongest-pair selection, controlled three/four-camera expansion, derived-copy penalties, confidence states, and `evidence/reports/camera_grouping.json`.
+- [x] Added repeated `--camera-file` fallback to `detect-sync`, `prepare`, and `auto`; it bypasses grouping only.
+- [x] Added local bundled FFmpeg/FFprobe discovery under ignored `temp/**/bin`, allowing the exact documented command to run without path flags in this workspace (`src/preflight.py`).
+- [x] Added grouping/orchestration tests for filename formats, Unicode/no timestamp, positive/negative offsets, unrelated/low-confidence/no-audio pairs, duplicates, stable tie-breaking, best pair, three-camera selection, no reliable group, smoke grouping, and explicit selection.
+- [x] Expanded the synthetic integration to A/B same-event sources with a known 300 ms offset, unrelated camera C, and an excluded derived output; project, sync, EDL, 90-second render, evidence, and non-approval all passed.
+- [x] Ran the exact real command without explicit executable paths; 10 videos discovered, 3 derived excluded, 7 eligible, 21 pairs analyzed, three-camera group selected, and an 18-second unverified-sync smoke draft rendered.
 
 ## 4. Files Created or Modified
 
@@ -81,7 +93,7 @@
 - `src/logging_config.py` — console/local file logging.
 - `src/preflight.py` — MoviePy/FFmpeg/FFprobe availability and executable verification.
 - `src/validate_inputs.py` — structural, path, extension, camera-count, uniqueness, master-camera, and output-policy checks.
-- `src/media_probe.py` — FFprobe subprocess/JSON parser and rendered-output validation.
+- `src/media_probe.py` — FFprobe subprocess/JSON parser, creation-time extraction, and rendered-output validation.
 - `src/sync.py` — sync config parser, offset formula, and immutable camera updates.
 - `src/edl.py` — strict parser plus chronology, continuity, cameras, switches, duration, transition, and overlay checks.
 - `src/render_plan.py` — offset mapping, boundary checks, immutable render instructions, printable summary.
@@ -97,12 +109,17 @@
 - `handoff.md` — this implementation and verification record.
 
 - `src/video_discovery.py` — deterministic recursive discovery, exclusions, probing, stable IDs, reports, and conservative related-camera grouping.
+- `src/camera_grouping.py` — deterministic multi-signal pair scoring, cached audio analysis, offset/stability/transient evidence, derived-copy detection, confidence states, and best-group selection.
 - `src/sync_assistant.py` — local FFmpeg audio-window decoding, transient/correlation analysis, ranked candidates, confidence policy, and human confirmation.
 - `src/edl_generator.py` — synchronized common-duration calculation and validated deterministic EDL proposals.
 - `src/auto_pipeline.py` — generated project configuration, preparation outcomes, summary evidence, and safe auto-draft orchestration.
 - `tests/unit/test_video_discovery.py`, `test_sync_assistant.py`, `test_edl_generator.py`, `test_auto_pipeline.py` — focused automation tests.
+- `tests/unit/test_camera_grouping.py`, `test_preflight.py`, `test_media_probe.py` — grouping signals/selection, local executable resolution, and creation-time metadata coverage.
 - `tests/integration/test_pipeline.py` — opt-in synthetic compliant automatic workflow with generated temporary media.
 - `README.md`, `architecture.md` — automatic, assisted, expert, confidence, smoke, outcome-state, and privacy documentation.
+- `config/generated_project.json`, `config/generated_sync.json`, `edl/generated_editing_decisions.json` — latest three-camera real-footage automatic smoke artifacts with automation provenance and unverified synchronization.
+- `evidence/reports/camera_grouping.json` — ignored local all-pair grouping evidence; 21 real pairs with signals, scores, offsets, confidence, and reasons.
+- `output/draft/kindergarten-graduation-demo-unverified-sync-smoke_draft.mp4` — ignored local 18-second real automatic draft; never promoted or approved.
 
 ### Approved footage inventory
 
@@ -138,10 +155,18 @@ modified, moved, renamed, deleted, or staged.
   - Reason: Existing validation, render planning, atomic promotion, evidence, review, and checksum approval are working safety boundaries.
   - Consequences: Generated JSON is reloaded through `prepare_pipeline`; validators were not weakened.
   - Affected files: `src/auto_pipeline.py`, `src/edl_generator.py`, `src/main.py`.
-- Decision: Automatic camera relatedness requires a shared specific date-time filename token.
-  - Reason: Common directory placement or a shared date does not prove simultaneous camera views.
-  - Consequences: Ambiguous input returns `NEEDS_CAMERA_SELECTION`; the exact approved `20260619_151529` pair selects `camera_04` and `camera_06`.
-  - Affected files: `src/video_discovery.py`.
+- Decision: The earlier filename-only camera grouping rule is superseded by deterministic multi-signal pairwise grouping.
+  - Reason: Filename formats and device clocks vary; local audio similarity, offset stability, shared transients, metadata time, and common coverage provide stronger explainable evidence.
+  - Consequences: Every eligible pair is analyzed and reported. Audio evidence and minimum duration are mandatory; filename, codec, resolution, or duration similarity alone cannot accept a pair.
+  - Affected files: `src/camera_grouping.py`, `src/video_discovery.py`, `src/media_probe.py`, `src/auto_pipeline.py`.
+- Decision: The strongest accepted pair anchors group selection; larger groups require all-high-confidence edges within 0.05 of that pair.
+  - Reason: Pure maximum-clique selection admitted a larger but weaker real-footage group whose initial sync window could not support every source.
+  - Consequences: Three or four cameras are still selected when mutually coherent, while weak coincidental links cannot displace the best pair. Stable IDs break ties.
+  - Affected files: `src/camera_grouping.py`, `tests/unit/test_camera_grouping.py`.
+- Decision: Grouping confidence and synchronization acceptance remain separate.
+  - Reason: Strong shared-event audio can support camera grouping without proving that a transient is a deliberate clap.
+  - Consequences: The real draft is named `unverified-sync-smoke`, evidence requires human verification, and final approval remains prohibited.
+  - Affected files: `src/camera_grouping.py`, `src/sync_assistant.py`, `src/auto_pipeline.py`, `src/review.py`.
 - Decision: Cross-camera correlation may select an unverified shared transient, never a verified clap.
   - Reason: Signal evidence supports offset estimation but cannot establish a deliberate clap or manual acceptance.
   - Consequences: Auto evidence and filenames remain `unverified-sync`; human confirmation is required.
@@ -234,6 +259,19 @@ modified, moved, renamed, deleted, or staged.
 - `python -m src.main auto --input input --duration 18 --title "Kindergarten Graduation Ceremony" --allow-smoke --ffmpeg <local ffmpeg> --ffprobe <local ffprobe>`
 - Independent FFprobe JSON and PowerShell SHA-256 inspection of the generated auto smoke draft.
 - Opt-in synthetic test: `pytest tests/integration/test_pipeline.py::PipelineIntegrationTests::test_automatic_synthetic_clap_workflow_renders_compliant_draft -q` with local FFmpeg/FFprobe environment variables.
+
+### Evidence-based grouping commands
+
+- Reproduced before implementation: `python -m src.main auto --input input --duration 18 --title "Kindergarten Graduation Demo" --allow-smoke` — 10 discovered, 0 usable selected, `NEEDS_CAMERA_SELECTION`, filename-only warning.
+- Targeted grouping/orchestration: `python -m pytest tests/unit/test_camera_grouping.py tests/unit/test_auto_pipeline.py -q` — 12 passed.
+- Synthetic relevant/unrelated/derived integration: opt-in `python -m pytest tests/integration/test_pipeline.py::PipelineIntegrationTests::test_automatic_synthetic_clap_workflow_renders_compliant_draft -q` — 1 passed in 7.77 s.
+- Full media-enabled suite with explicit local FFmpeg/FFprobe environment variables: `python -m pytest -q` — 58 passed in 16.82 s.
+- Required ordinary suite: `python -m pytest -q` — 54 passed, 4 skipped in 0.44 s; skips are the opt-in real-media tests.
+- Required static checks: `python -m ruff check src tests`, `python -m ruff format --check src tests`, and `python -m compileall -q src tests` — all passed; 42 Python files formatted.
+- Exact real workflow: `python -m src.main auto --input input --duration 18 --title "Kindergarten Graduation Demo" --allow-smoke` — passed without explicit executable paths in 92.8 s.
+- Generated-artifact validation: `python -m src.main validate --config config/generated_project.json --sync config/generated_sync.json --edl edl/generated_editing_decisions.json` — passed; 18.000 s plan, three cameras, four segments, three switches.
+- Independent real draft probe: local FFprobe `-show_entries format=duration:stream=index,codec_type,codec_name,width,height,r_frame_rate` — 18.000000 s, H.264 1280×720 at 30 fps, AAC audio.
+- Independent `Get-FileHash -Algorithm SHA256` matched evidence (`7DB5CF4D202AE7360963E03E0537C78E57FD3548272BCCC00170C1F8C734F377`); `output/final` contained zero promoted outputs.
 
 ## 7. Test and Verification Results
 
@@ -351,11 +389,21 @@ modified, moved, renamed, deleted, or staged.
 - The first real `inspect` run exposed Windows locale decoding of a non-ASCII filename. FFprobe text capture now forces UTF-8 with replacement, and a regression test passes.
 - The first idempotent auto rerun exposed JSON tuple/list comparison differences. Generated JSON comparison now normalizes through JSON representation before deciding whether content differs.
 
+### Evidence-based grouping verification (2026-07-26)
+
+- Real discovery: 10 files total; 7 eligible likely sources; 3 obvious derived outputs excluded; all 21 eligible pairs analyzed.
+- Real automatic result: `CAMERA_GROUP_CONFIRMED`, high confidence, selected `camera_02` (`VID20260619151534.mp4`), `camera_04` (`VID_20260619_151529.mp4`), and `camera_05` (`VID_20260619_151532 1.mp4`). The selected group's minimum pair score is 0.844456.
+- Strongest real pair: `camera_02/camera_04`, score 0.872776, audio correlation 0.836443, estimated offset +1.960 s, offset stability 0.953343, two shared transient matches. The previously demonstrated `camera_04/camera_06` pair was also supported (score 0.856908, correlation 0.795465, +0.580 s) but was not hardcoded as the winner.
+- Real sync suggestions: `camera_02` 2.310 s (0.794), `camera_04` 4.270 s (0.794), `camera_05` 1.470 s (0.771), all `shared_audio_transient`, all requiring human verification, none represented as a verified clap.
+- Real auto render: `DRAFT_RENDERED_WITH_UNVERIFIED_SYNC`; MoviePy; 18.000 s; H.264/AAC; 1280×720; 30 fps; 3 camera switches; SHA-256 `7db5cf4d202ae7360963e03e0537c78e57fd3548272bccc00170c1f8c734f377`.
+- Automatic summary confirms `human_review_required: true` and `final_approval_performed: false`; the `smoke` and `unverified-sync` filename makes the draft ineligible for final approval. No file was created under `output/final`.
+- Synthetic media result: A/B with unrelated filenames and known 300 ms offset were selected; unrelated C was rejected; an `automatic_final.mp4` copy was excluded; generated project/sync/EDL, 90-second FFmpeg fallback draft, output validation, evidence, and non-approval passed. Fixtures contained no real individuals and were deleted with the temporary directory.
+
 ## 8. Known Issues and Limitations
 
-- Automatic correlation suggests 4.270 s / 4.850 s (+0.580 s) for the selected approved pair, while the earlier manual inspection recorded a provisional 5.695 s / 5.695 s shared landmark. Neither is a verified deliberate clap. This disagreement must be resolved by human audio/visual review and is not hidden by the automation layer.
-- `config/generated_project.json`, `config/generated_sync.json`, and `edl/generated_editing_decisions.json` currently represent the 18-second unverified-sync smoke workflow; manual files remain unchanged.
-- Automatic filename grouping is intentionally conservative and may return `NEEDS_CAMERA_SELECTION` for valid camera files that lack matching event-time names.
+- Current automatic sync suggests 2.310 s / 4.270 s / 1.470 s for the selected three-camera group; the earlier manual pair inspection recorded a provisional 5.695 s / 5.695 s shared landmark. None is a verified deliberate clap. This disagreement requires human audio/visual review and remains explicit in evidence.
+- `config/generated_project.json`, `config/generated_sync.json`, and `edl/generated_editing_decisions.json` currently represent the 18-second three-camera unverified-sync smoke workflow; manual files remain unchanged.
+- Pairwise grouping uses only the first 45 seconds of low-rate audio and assumes a constant bounded offset. Repetitive music, heavy noise reduction, severe drift, or missing audio can still cause rejection or require explicit human camera selection.
 - Audio correlation assumes a constant offset within the analysed window and does not correct clock drift.
 
 - Approved footage is present under ignored `input/` and the selected pair is mapped in `config/project.json`.
@@ -399,7 +447,7 @@ modified, moved, renamed, deleted, or staged.
 
 ## 10. Next Actions
 
-1. Human-review both selected files around the automatic 4.270 s / 4.850 s shared-transient suggestions and the earlier 5.695 s / 5.695 s provisional landmark; use `confirm-sync` only if a deliberate clap is unambiguous.
+1. Human-review the selected files at the automatic shared-transient suggestions: `VID20260619151534.mp4` near 2.310 s, `VID_20260619_151529.mp4` near 4.270 s, and `VID_20260619_151532 1.mp4` near 1.470 s. Compare the earlier 5.695 s landmark on the former manual pair; use `confirm-sync` only if a deliberate clap is unambiguous.
 2. Obtain at least 60 seconds of overlapping footage from two cameras with a deliberate clap, or obtain written lecturer approval for the shorter duration and alternate cue.
 3. If longer footage is supplied, update only camera paths and verified clap timestamps, then rerun the canonical `python -m src.main validate`.
 4. Render the 60–180 second draft only after canonical validation passes.
@@ -444,6 +492,12 @@ modified, moved, renamed, deleted, or staged.
 
 - [x] `inspect` discovers recursive source videos
 - [x] Camera IDs are stable and obvious generated outputs are excluded
+- [x] All eligible pairs receive local multi-signal audio/metadata analysis; filename equality is not required
+- [x] Filename timestamps normalize separated, compact, prefixed, and Unicode formats
+- [x] Pair evidence records correlation, offset, stability, shared transients, score, confidence, and reason
+- [x] Best supported pair/group selection and stable tie-breaking are deterministic
+- [x] Unrelated audio and likely derived duplicates are rejected
+- [x] Repeated `--camera-file` provides a validated explicit-selection fallback
 - [x] Generated project configuration is valid and separate from manual config
 - [x] Sync assistant produces ranked deterministic candidates and supporting metrics
 - [x] Low-confidence/no-audio results do not invent timestamps
@@ -456,4 +510,5 @@ modified, moved, renamed, deleted, or staged.
 - [x] `auto` renders a draft, validates output/evidence, and never approves
 - [x] Approved-footage discovery, sync analysis, insufficient-duration report, and smoke render executed
 - [x] Synthetic 90-second automatic end-to-end workflow executed successfully
+- [x] Synthetic same-event A/B, unrelated C, and derived-copy grouping/render workflow executed successfully
 - [x] README and architecture document the Automatic Preparation Layer

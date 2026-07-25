@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import replace
 from pathlib import Path
 
+from .camera_grouping import group_camera_sources
 from .edl_generator import generate_edl, maximum_honest_output_duration
 from .errors import PreparationError
 from .evidence import utc_now
@@ -24,7 +26,7 @@ from .models import (
 from .pipeline import PreparedPipeline, prepare_pipeline, render_draft
 from .sync import apply_sync
 from .sync_assistant import analyse_sync
-from .video_discovery import discover_videos, select_related_camera_group
+from .video_discovery import discover_videos
 
 
 def _slug(value: str) -> str:
@@ -163,7 +165,37 @@ def _summary_payload(
         "human_review_required": True,
         "final_approval_performed": False,
         "warnings": list(result.warnings),
+        "camera_grouping": {
+            "state": result.camera_group_state,
+            "best_score": result.camera_group_score,
+            "analysed_pair_count": result.analysed_pair_count,
+            "selected_paths": list(result.selected_camera_paths),
+            "excluded_derived_count": result.excluded_derived_count,
+        },
     }
+
+
+def _is_managed_generated_file(path: Path) -> bool:
+    """Recognize prior automation output without treating arbitrary JSON as managed."""
+    if not path.is_file() or not path.name.startswith("generated_"):
+        return False
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    if not isinstance(payload, dict):
+        return False
+    if payload.get("generated_by") in {
+        "automatic_preparation_layer",
+        "deterministic_rule_based_edl_generator",
+    }:
+        return True
+    if payload.get("acceptance_status") == "needs_human_confirmation" and isinstance(
+        payload.get("camera_analyses"), list
+    ):
+        return True
+    project = payload.get("project")
+    return isinstance(project, str) and "unverified-sync" in project
 
 
 def prepare_automatic(
@@ -178,6 +210,7 @@ def prepare_automatic(
     allow_smoke: bool = False,
     include_derived: bool = False,
     overwrite: bool = False,
+    camera_files: tuple[Path, ...] = (),
 ) -> PreparationResult:
     root = project_root.resolve()
     reports = root / "evidence" / "reports"
@@ -193,12 +226,33 @@ def prepare_automatic(
         include_derived=include_derived,
         report_path=reports / "video_discovery.json",
     )
-    group = select_related_camera_group(discovery.videos)
-    if len(group) < 2:
+    grouping_path = reports / "camera_grouping.json"
+    grouping = group_camera_sources(
+        discovery.videos,
+        input_path=input_path,
+        ffmpeg_executable=ffmpeg_executable,
+        minimum_common_duration_seconds=(
+            min(16.0, max(4.0, requested_duration_seconds - 2.0))
+            if allow_smoke
+            else 8.0
+        ),
+        explicit_camera_files=camera_files,
+        report_path=grouping_path,
+    )
+    group = grouping.selected_videos
+    if len(group) < 2 or (
+        grouping.confidence == "medium" and not allow_smoke and not camera_files
+    ):
+        medium_warning = (
+            "The best camera group has medium confidence and may be used only for "
+            "an explicitly labelled smoke draft."
+            if group
+            else grouping.reason
+        )
         result = PreparationResult(
             outcome=AutomationOutcome.NEEDS_CAMERA_SELECTION,
             discovered_count=len(discovery.videos),
-            usable_camera_count=len(discovery.usable_videos),
+            usable_camera_count=grouping.eligible_count,
             master_camera=None,
             sync_status="NOT_RUN",
             requested_duration_seconds=requested_duration_seconds,
@@ -209,19 +263,25 @@ def prepare_automatic(
             summary_path=summary_path,
             render_permitted=False,
             smoke=False,
-            warnings=(
-                (
-                    "No two files shared reliable filename event-time evidence. Select "
-                    "a camera group explicitly; unrelated videos were not assumed "
-                    "synchronized."
-                ),
+            warnings=(medium_warning,),
+            camera_group_state=grouping.state.value,
+            camera_group_score=grouping.best_score,
+            analysed_pair_count=grouping.analysed_pair_count,
+            selected_camera_paths=tuple(
+                video.relative_path for video in grouping.selected_videos
             ),
+            excluded_derived_count=grouping.excluded_derived_count,
         )
         write_json_atomic(summary_path, _summary_payload(result))
         return result
 
     cameras = _camera_sources(group)
     master_camera = cameras[0].id
+    managed_overwrite = overwrite or all(
+        _is_managed_generated_file(path)
+        for path in (project_path, sync_path, edl_path)
+        if path.exists()
+    )
     analyses, sync_data = analyse_sync(
         cameras,
         master_camera=master_camera,
@@ -229,7 +289,7 @@ def prepare_automatic(
         ffmpeg_executable=ffmpeg_executable,
         sync_path=sync_path,
         report_path=reports / "sync_candidates.json",
-        overwrite=overwrite,
+        overwrite=managed_overwrite,
     )
     complete_sync = all(
         item.selected_timestamp_seconds is not None for item in analyses
@@ -245,7 +305,8 @@ def prepare_automatic(
             smoke=False,
             target_duration=requested_duration_seconds,
         )
-        write_generated_json(project_path, project_data, overwrite=overwrite)
+        project_data["generated_by"] = "automatic_preparation_layer"
+        write_generated_json(project_path, project_data, overwrite=managed_overwrite)
         result = PreparationResult(
             outcome=AutomationOutcome.NEEDS_SYNC_CONFIRMATION,
             discovered_count=len(discovery.videos),
@@ -266,6 +327,13 @@ def prepare_automatic(
                     "times were saved, but no missing timestamp was invented."
                 ),
             ),
+            camera_group_state=grouping.state.value,
+            camera_group_score=grouping.best_score,
+            analysed_pair_count=grouping.analysed_pair_count,
+            selected_camera_paths=tuple(
+                video.relative_path for video in grouping.selected_videos
+            ),
+            excluded_derived_count=grouping.excluded_derived_count,
         )
         write_json_atomic(summary_path, _summary_payload(result))
         return result
@@ -306,7 +374,10 @@ def prepare_automatic(
                 smoke=False,
                 target_duration=requested_duration_seconds,
             )
-            write_generated_json(project_path, project_data, overwrite=overwrite)
+            project_data["generated_by"] = "automatic_preparation_layer"
+            write_generated_json(
+                project_path, project_data, overwrite=managed_overwrite
+            )
             result = PreparationResult(
                 outcome=AutomationOutcome.INSUFFICIENT_COMMON_DURATION,
                 discovered_count=len(discovery.videos),
@@ -327,6 +398,13 @@ def prepare_automatic(
                         "No looping, padding, freezing, or time stretching was used."
                     ),
                 ),
+                camera_group_state=grouping.state.value,
+                camera_group_score=grouping.best_score,
+                analysed_pair_count=grouping.analysed_pair_count,
+                selected_camera_paths=tuple(
+                    video.relative_path for video in grouping.selected_videos
+                ),
+                excluded_derived_count=grouping.excluded_derived_count,
             )
             write_json_atomic(summary_path, _summary_payload(result))
             return result
@@ -364,14 +442,15 @@ def prepare_automatic(
         smoke=smoke,
         target_duration=target_duration,
     )
-    write_generated_json(project_path, project_data, overwrite=overwrite)
+    project_data["generated_by"] = "automatic_preparation_layer"
+    write_generated_json(project_path, project_data, overwrite=managed_overwrite)
     generate_edl(
         config,
         requested_duration_seconds=target_duration,
         allow_smoke=smoke,
         output_path=edl_path,
         report_path=reports / "generated_edl.json",
-        overwrite=overwrite,
+        overwrite=managed_overwrite,
     )
     # Re-load every serialized artefact through the established validated pipeline.
     prepare_pipeline(
@@ -409,6 +488,13 @@ def prepare_automatic(
         render_permitted=True,
         smoke=smoke,
         warnings=tuple(warnings),
+        camera_group_state=grouping.state.value,
+        camera_group_score=grouping.best_score,
+        analysed_pair_count=grouping.analysed_pair_count,
+        selected_camera_paths=tuple(
+            video.relative_path for video in grouping.selected_videos
+        ),
+        excluded_derived_count=grouping.excluded_derived_count,
     )
     write_json_atomic(summary_path, _summary_payload(result))
     return result
