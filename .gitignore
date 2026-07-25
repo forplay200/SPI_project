@@ -1,0 +1,40 @@
+# Local footage and generated media (privacy-sensitive and/or large)
+input/*
+!input/.gitkeep
+*.mp4
+*.mov
+*.mkv
+*.avi
+
+# Generated outputs and evidence
+output/draft/*
+!output/draft/.gitkeep
+output/final/*
+!output/final/.gitkeep
+temp/*
+!temp/.gitkeep
+evidence/logs/*
+!evidence/logs/.gitkeep
+evidence/reports/*
+!evidence/reports/.gitkeep
+evidence/approvals/*
+!evidence/approvals/.gitkeep
+evidence/screenshots/*
+!evidence/screenshots/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+

@@ -1,0 +1,21 @@
+{
+  "draft_path": "output/draft/kindergarten-graduation-demo_draft.mp4",
+  "instructions": "Watch the complete draft and set each item to true only when verified.",
+  "checklist": {
+    "output_opens": false,
+    "duration_valid": false,
+    "clap_sync_within_threshold": false,
+    "two_cameras_visible": false,
+    "three_switches_visible": false,
+    "title_readable": false,
+    "credits_readable": false,
+    "overlay_readable": false,
+    "transition_visible": false,
+    "important_moments_retained": false,
+    "camera_choices_reasonable": false,
+    "audio_continuity_acceptable": false,
+    "privacy_checked": false,
+    "asset_licences_checked": false
+  }
+}
+

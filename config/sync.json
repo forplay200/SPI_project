@@ -1,0 +1,11 @@
+{
+  "master_camera": "camera_wide",
+  "cue_type": "shared_audio_transient_unconfirmed_as_clap",
+  "cue_description": "Measured local audio landmark near 5.695 seconds. Frame inspection shows speech, not a visible clap; manual audio review is still required.",
+  "acceptance_status": "manual_clap_review_required",
+  "clap_timestamps": {
+    "camera_wide": 5.695,
+    "camera_close": 5.695
+  },
+  "verification_threshold_ms": 100
+}

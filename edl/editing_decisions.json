@@ -1,0 +1,44 @@
+{
+  "project": "kindergarten-graduation-demo",
+  "timeline": [
+    {
+      "id": "seg-001",
+      "start": 0.0,
+      "end": 16.0,
+      "camera": "camera_wide",
+      "reason": "Stable wide view establishes the ceremony",
+      "action": "fade_in"
+    },
+    {
+      "id": "seg-002",
+      "start": 16.0,
+      "end": 32.0,
+      "camera": "camera_close",
+      "reason": "Closer view provides visual variety for the speech",
+      "action": "cut",
+      "overlay": {
+        "type": "lower_third",
+        "text": "Graduation Ceremony",
+        "start": 17.0,
+        "end": 21.0,
+        "position": "bottom"
+      }
+    },
+    {
+      "id": "seg-003",
+      "start": 32.0,
+      "end": 48.0,
+      "camera": "camera_wide",
+      "reason": "Wide view keeps the group moment understandable",
+      "action": "cut"
+    },
+    {
+      "id": "seg-004",
+      "start": 48.0,
+      "end": 64.0,
+      "camera": "camera_close",
+      "reason": "Closer view concludes the selected ceremony footage",
+      "action": "fade_to_black"
+    }
+  ]
+}

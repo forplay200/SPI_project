@@ -1,0 +1,36 @@
+{
+  "project": "kindergarten-graduation-demo",
+  "master_camera": "camera_wide",
+  "renderer": "moviepy",
+  "allow_ffmpeg_fallback": true,
+  "output": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30,
+    "video_codec": "libx264",
+    "audio_codec": "aac"
+  },
+  "duration_policy": {
+    "min_seconds": 60.0,
+    "max_seconds": 180.0,
+    "includes_title_and_credits": true
+  },
+  "title": {
+    "text": "Kindergarten Graduation Ceremony",
+    "duration": 4.0
+  },
+  "credits": {
+    "text": "Edited by the Project Team",
+    "duration": 4.0
+  },
+  "cameras": [
+    {
+      "id": "camera_wide",
+      "path": "input/video_20260619_151529.mp4"
+    },
+    {
+      "id": "camera_close",
+      "path": "input/VID_20260619_151529.mp4"
+    }
+  ]
+}

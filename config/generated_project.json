@@ -1,0 +1,36 @@
+{
+  "project": "kindergarten-graduation-ceremony-unverified-sync-smoke",
+  "master_camera": "camera_04",
+  "renderer": "moviepy",
+  "allow_ffmpeg_fallback": true,
+  "output": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30,
+    "video_codec": "libx264",
+    "audio_codec": "aac"
+  },
+  "duration_policy": {
+    "min_seconds": 17.75,
+    "max_seconds": 18.25,
+    "includes_title_and_credits": true
+  },
+  "title": {
+    "text": "Kindergarten Graduation Ceremony",
+    "duration": 1.0
+  },
+  "credits": {
+    "text": "Edited locally - human review required",
+    "duration": 1.0
+  },
+  "cameras": [
+    {
+      "id": "camera_04",
+      "path": "input/VID_20260619_151529.mp4"
+    },
+    {
+      "id": "camera_06",
+      "path": "input/video_20260619_151529.mp4"
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "master_camera": "camera_04",
+  "cue_type": "shared_audio_transient",
+  "cue_description": "Deterministic local transient candidates; every value requires human verification and is not automatically accepted as a deliberate clap.",
+  "acceptance_status": "needs_human_confirmation",
+  "clap_timestamps": {
+    "camera_04": 4.27,
+    "camera_06": 4.85
+  },
+  "verification_threshold_ms": 100,
+  "requires_human_verification": true,
+  "search_window_seconds": 15.0,
+  "confidence_threshold": 0.65,
+  "camera_analyses": [
+    {
+      "camera_id": "camera_04",
+      "candidates": [
+        {
+          "timestamp_seconds": 4.27,
+          "confidence": 0.739,
+          "cue_type": "shared_audio_transient",
+          "supporting_metric": 0.739
+        },
+        {
+          "timestamp_seconds": 4.09,
+          "confidence": 0.182,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 6.188
+        },
+        {
+          "timestamp_seconds": 6.17,
+          "confidence": 0.148,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 5.779
+        },
+        {
+          "timestamp_seconds": 0.67,
+          "confidence": 0.12,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 5.443
+        },
+        {
+          "timestamp_seconds": 5.11,
+          "confidence": 0.073,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 4.872
+        }
+      ],
+      "selected_timestamp_seconds": 4.27,
+      "confidence": 0.739,
+      "state": "shared_audio_transient",
+      "requires_human_verification": true,
+      "warnings": [
+        "Cross-camera envelope correlation supports this shared transient, but it is not a verified clap."
+      ]
+    },
+    {
+      "camera_id": "camera_06",
+      "candidates": [
+        {
+          "timestamp_seconds": 4.85,
+          "confidence": 0.739,
+          "cue_type": "shared_audio_transient",
+          "supporting_metric": 0.739
+        },
+        {
+          "timestamp_seconds": 4.75,
+          "confidence": 0.055,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 4.662
+        },
+        {
+          "timestamp_seconds": 12.51,
+          "confidence": 0.019,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 4.224
+        }
+      ],
+      "selected_timestamp_seconds": 4.85,
+      "confidence": 0.739,
+      "state": "shared_audio_transient",
+      "requires_human_verification": true,
+      "warnings": [
+        "Cross-camera envelope correlation supports this shared transient, but it is not a verified clap."
+      ]
+    }
+  ],
+  "manual_confirmations": {}
+}

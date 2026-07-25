@@ -1,0 +1,45 @@
+{
+  "project": "kindergarten-graduation-demo-smoke",
+  "timeline": [
+    {
+      "id": "smoke-001",
+      "start": 0.0,
+      "end": 4.0,
+      "camera": "camera_wide",
+      "reason": "Stable wide view establishes the room and presenter",
+      "action": "fade_in"
+    },
+    {
+      "id": "smoke-002",
+      "start": 4.0,
+      "end": 8.0,
+      "camera": "camera_close",
+      "reason": "Closer view tests synchronized camera switching",
+      "action": "cut",
+      "overlay": {
+        "type": "lower_third",
+        "text": "Local Multi-Camera Smoke Test",
+        "start": 5.0,
+        "end": 7.0,
+        "position": "bottom"
+      }
+    },
+    {
+      "id": "smoke-003",
+      "start": 8.0,
+      "end": 12.0,
+      "camera": "camera_wide",
+      "reason": "Wide view tests return switching and normalization",
+      "action": "cut"
+    },
+    {
+      "id": "smoke-004",
+      "start": 12.0,
+      "end": 16.0,
+      "camera": "camera_close",
+      "reason": "Close view completes the short renderer test",
+      "action": "fade_to_black"
+    }
+  ]
+}
+
