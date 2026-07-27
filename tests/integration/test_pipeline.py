@@ -314,17 +314,34 @@ class PipelineIntegrationTests(unittest.TestCase):
                     "deliberate synthetic automatic fallback"
                 ),
             ):
-                result, _, rendered = run_automatic(
+                result, prepared, rendered = run_automatic(
                     project_root=root,
                     input_path=input_path,
                     requested_duration_seconds=90,
                     title="Synthetic Kindergarten Graduation",
+                    credits="Edited by Synthetic Team | BTIS3053",
+                    credits_duration=3,
                     ffmpeg_executable=FFMPEG,
                     ffprobe_executable=FFPROBE,
                 )
             self.assertEqual(
                 result.outcome,
                 AutomationOutcome.DRAFT_RENDERED_WITH_UNVERIFIED_SYNC,
+            )
+            self.assertIsNotNone(prepared)
+            self.assertEqual(
+                prepared.plan.credits.text, "Edited by Synthetic Team | BTIS3053"
+            )
+            self.assertEqual(prepared.plan.credits.duration, 3.0)
+            generated_project = json.loads(
+                (root / "config" / "generated_project.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                generated_project["credits"],
+                {
+                    "text": "Edited by Synthetic Team | BTIS3053",
+                    "duration": 3,
+                },
             )
             self.assertEqual(result.analysed_pair_count, 3)
             self.assertEqual(result.excluded_derived_count, 1)

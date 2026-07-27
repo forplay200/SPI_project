@@ -9,7 +9,7 @@ import sys
 from dataclasses import replace
 from pathlib import Path
 
-from .auto_pipeline import prepare_automatic, run_automatic
+from .auto_pipeline import DEFAULT_CREDITS_TEXT, prepare_automatic, run_automatic
 from .camera_grouping import group_camera_sources
 from .edl_generator import generate_edl
 from .errors import PipelineError, PreparationError
@@ -108,6 +108,12 @@ def build_parser() -> argparse.ArgumentParser:
         command.add_argument("--input", type=Path, default=Path("input"))
         command.add_argument("--duration", type=float, default=90.0)
         command.add_argument("--title", default="Kindergarten Graduation Ceremony")
+        command.add_argument("--credits", default=DEFAULT_CREDITS_TEXT)
+        command.add_argument(
+            "--credits-duration",
+            type=float,
+            help="Closing-credit seconds; defaults to 4 normally and 1 in smoke mode.",
+        )
         command.add_argument("--search-window", type=float, default=15.0)
         command.add_argument("--allow-smoke", action="store_true")
         command.add_argument("--include-derived", action="store_true")
@@ -295,6 +301,8 @@ def run(args: argparse.Namespace) -> int:
             "input_path": args.input,
             "requested_duration_seconds": args.duration,
             "title": args.title,
+            "credits": args.credits,
+            "credits_duration": args.credits_duration,
             "ffmpeg_executable": args.ffmpeg,
             "ffprobe_executable": args.ffprobe,
             "search_window_seconds": args.search_window,

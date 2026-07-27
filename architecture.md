@@ -1316,6 +1316,15 @@ Generated project configuration uses a deterministic master camera, 1280×720 at
 are separate from manual files and cannot replace different content without
 `--overwrite`.
 
+`prepare` and `auto` accept `--credits` and `--credits-duration`.
+Generated credit text defaults to `Edited by the Project Team`; it must be
+non-empty. An explicit duration must be finite and greater than zero. Normal
+generation defaults to four seconds, while smoke generation retains its compact
+one-second default unless the operator supplies a duration. The resolved values
+are stored in the project configuration, copied unchanged into the
+renderer-neutral render plan, and rendered by both MoviePy and FFmpeg as the
+mandatory closing-credit screen.
+
 The EDL generator calculates the synchronized common timeline after offsets. It
 never creates a source interval outside a probed duration. Normal proposals target
 60–180 seconds, use 8-second minimum, 12-second preferred, and 20-second maximum
@@ -1347,6 +1356,12 @@ Automatically detected but unverified synchronization is included in the project
 and draft filename and in evidence. `auto` never imports or invokes approval.
 Smoke mode requires `--allow-smoke`, includes `smoke` in artifact names, stays
 under `output/draft`, and is rejected by final approval policy.
+
+Human-review status is operational metadata, not closing-credit content. It stays
+visible in CLI summaries, evidence, filenames, review records, and approval
+policy. Approval does not modify or rerender the media; it verifies the current
+draft SHA-256 against the approved review record, copies the exact bytes, verifies
+the copied checksum, and atomically promotes that copy.
 
 The typed outcome states are:
 

@@ -59,6 +59,30 @@ The equivalent one-line command is:
 python -m src.main auto --input input --duration 90 --title "Kindergarten Graduation Ceremony"
 ```
 
+Customize the closing credit while the draft is being prepared:
+
+```powershell
+python -m src.main auto `
+  --input input `
+  --duration 20 `
+  --title "Kindergarten Graduation Demo" `
+  --credits "Edited by the Project Team | BTIS3053" `
+  --credits-duration 4 `
+  --allow-smoke
+```
+
+`--credits` defaults to the professional text `Edited by the Project Team`.
+When `--credits-duration` is omitted, normal output uses four seconds and smoke
+output preserves its compact one-second presentation default. Credit text must be
+non-empty and an explicit duration must be finite and greater than zero. Both
+values are written to `config/generated_project.json` and rendered by the
+existing closing-credit screen.
+
+Human-review warnings are deliberately not visible credit text. They remain in
+console output, evidence, smoke/unverified filenames, review metadata, and approval
+rules. Approval never edits or rerenders a reviewed video: it promotes only the
+exact bytes whose SHA-256 is bound to the approved review record.
+
 Generated files are written to:
 
 - `config/generated_project.json`
@@ -110,6 +134,9 @@ python -m src.main prepare `
   --duration 90 `
   --title "Kindergarten Graduation Ceremony"
 ```
+
+The same `--credits` and `--credits-duration` options are available to
+`prepare`; they are validated and saved without rendering.
 
 The summary reports one of the explicit states `READY_FOR_DRAFT`,
 `READY_FOR_SMOKE_ONLY`, `NEEDS_CAMERA_SELECTION`,

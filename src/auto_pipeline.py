@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import replace
 from pathlib import Path
@@ -27,6 +28,8 @@ from .pipeline import PreparedPipeline, prepare_pipeline, render_draft
 from .sync import apply_sync
 from .sync_assistant import analyse_sync
 from .video_discovery import discover_videos
+
+DEFAULT_CREDITS_TEXT = "Edited by the Project Team"
 
 
 def _slug(value: str) -> str:
@@ -65,10 +68,15 @@ def _project_data(
     master_camera: str,
     cameras: tuple[CameraSource, ...],
     title: str,
+    credits: str,
+    credits_duration: float | None,
     smoke: bool,
     target_duration: float,
 ) -> dict[str, object]:
     presentation_duration = 1.0 if smoke else 4.0
+    resolved_credits_duration = (
+        presentation_duration if credits_duration is None else credits_duration
+    )
     policy = (
         {
             "min_seconds": max(0.1, target_duration - 0.25),
@@ -97,8 +105,8 @@ def _project_data(
         "duration_policy": policy,
         "title": {"text": title, "duration": presentation_duration},
         "credits": {
-            "text": "Edited locally - human review required",
-            "duration": presentation_duration,
+            "text": credits,
+            "duration": resolved_credits_duration,
         },
         "cameras": [
             {
@@ -118,10 +126,15 @@ def _typed_config(
     master_camera: str,
     cameras: tuple[CameraSource, ...],
     title: str,
+    credits: str,
+    credits_duration: float | None,
     smoke: bool,
     target_duration: float,
 ) -> ProjectConfig:
     presentation_duration = 1.0 if smoke else 4.0
+    resolved_credits_duration = (
+        presentation_duration if credits_duration is None else credits_duration
+    )
     policy = (
         DurationPolicy(max(0.1, target_duration - 0.25), target_duration + 0.25, True)
         if smoke
@@ -134,9 +147,7 @@ def _typed_config(
         allow_ffmpeg_fallback=True,
         output=OutputSpec(),
         title=TextSpec(title, presentation_duration),
-        credits=TextSpec(
-            "Edited locally - human review required", presentation_duration
-        ),
+        credits=TextSpec(credits, resolved_credits_duration),
         cameras=cameras,
         duration_policy=policy,
     )
@@ -204,6 +215,8 @@ def prepare_automatic(
     input_path: Path,
     requested_duration_seconds: float,
     title: str,
+    credits: str = DEFAULT_CREDITS_TEXT,
+    credits_duration: float | None = None,
     ffmpeg_executable: str | Path | None = None,
     ffprobe_executable: str | Path | None = None,
     search_window_seconds: float = 15.0,
@@ -212,6 +225,13 @@ def prepare_automatic(
     overwrite: bool = False,
     camera_files: tuple[Path, ...] = (),
 ) -> PreparationResult:
+    credits = credits.strip()
+    if not credits:
+        raise PreparationError("--credits must be a non-empty string.")
+    if credits_duration is not None and (
+        not math.isfinite(credits_duration) or credits_duration <= 0
+    ):
+        raise PreparationError("--credits-duration must be a finite number above zero.")
     root = project_root.resolve()
     reports = root / "evidence" / "reports"
     reports.mkdir(parents=True, exist_ok=True)
@@ -302,6 +322,8 @@ def prepare_automatic(
             master_camera=master_camera,
             cameras=cameras,
             title=title,
+            credits=credits,
+            credits_duration=credits_duration,
             smoke=False,
             target_duration=requested_duration_seconds,
         )
@@ -357,6 +379,8 @@ def prepare_automatic(
         master_camera=master_camera,
         cameras=synced_cameras,
         title=title,
+        credits=credits,
+        credits_duration=credits_duration,
         smoke=False,
         target_duration=requested_duration_seconds,
     )
@@ -371,6 +395,8 @@ def prepare_automatic(
                 master_camera=master_camera,
                 cameras=cameras,
                 title=title,
+                credits=credits,
+                credits_duration=credits_duration,
                 smoke=False,
                 target_duration=requested_duration_seconds,
             )
@@ -430,6 +456,8 @@ def prepare_automatic(
         master_camera=master_camera,
         cameras=synced_cameras,
         title=title,
+        credits=credits,
+        credits_duration=credits_duration,
         smoke=smoke,
         target_duration=target_duration,
     )
@@ -439,6 +467,8 @@ def prepare_automatic(
         master_camera=master_camera,
         cameras=cameras,
         title=title,
+        credits=credits,
+        credits_duration=credits_duration,
         smoke=smoke,
         target_duration=target_duration,
     )

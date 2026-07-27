@@ -6,13 +6,13 @@
 - Current branch: `main`
 - Repository path: `C:\Newfolder\SPI_project\SPI_project`
 - Primary documents: `PRD_AI_Assisted_Multi_Camera_Kindergarten_v2.md`, `architecture.md`
-- Last updated: 2026-07-26
+- Last updated: 2026-07-27
 
 ## 2. Current Status
 
-- Current milestone: Evidence-based Automatic Multi-Camera Grouping
-- Overall status: Automatic grouping and the one-command workflow are complete and verified; approved footage remains smoke-only because it is short and has no verified clap
-- Last completed task: Completed real-footage 21-pair grouping/auto smoke and a synthetic relevant/unrelated/derived-source 90-second integration render
+- Current milestone: Configurable Generated Closing Credits
+- Overall status: Configurable generated closing credits are implemented, rendered, visually inspected, documented, and fully verified
+- Last completed task: Completed the real 20-second custom-credit render and the 62-test media-enabled regression suite
 - Task currently in progress: None
 - Next recommended task: Human-review the reported sync regions or supply longer multi-camera footage with a deliberate clap for the academic final
 
@@ -72,6 +72,17 @@
 - [x] Expanded the synthetic integration to A/B same-event sources with a known 300 ms offset, unrelated camera C, and an excluded derived output; project, sync, EDL, 90-second render, evidence, and non-approval all passed.
 - [x] Ran the exact real command without explicit executable paths; 10 videos discovered, 3 derived excluded, 7 eligible, 21 pairs analyzed, three-camera group selected, and an 18-second unverified-sync smoke draft rendered.
 
+### Configurable Generated Closing Credits (2026-07-27)
+
+- [x] Added `--credits` and `--credits-duration` to both `prepare` and `auto`.
+- [x] Replaced visible `Edited locally - human review required` with the professional default `Edited by the Project Team`.
+- [x] Stored custom/default credit text and duration in `config/generated_project.json` and propagated them unchanged through the validated render plan.
+- [x] Preserved the mandatory closing-credit screen in both MoviePy and FFmpeg.
+- [x] Added early validation for blank credit text and non-positive/non-finite durations.
+- [x] Kept human-review status in console/evidence/filenames/review policy rather than visible credit text.
+- [x] Left checksum-bound approval unchanged; promotion still copies and verifies the exact reviewed bytes without rerendering.
+- [x] Added focused unit coverage for CLI parsing, defaults, custom values, generated configuration, and duration validation; targeted run passed 19 tests.
+
 ## 4. Files Created or Modified
 
 - `.gitignore` — excludes all root/input video formats, generated drafts/finals, temporary media, logs, and caches; preserves directory keep files.
@@ -103,23 +114,23 @@
 - `src/evidence.py` — preflight/render JSON evidence and streaming SHA-256.
 - `src/pipeline.py` — prepared pipeline, temporary output, validation, atomic draft move, and evidence orchestration.
 - `src/review.py` — checklist templates, strict review records, anti-tamper checks, and approved final promotion.
-- `src/main.py` — CLI-only orchestration and non-zero expected-failure exit status.
+- `src/main.py` — CLI-only orchestration, prepare/auto credit options, and non-zero expected-failure exit status.
 - `tests/unit/` — validation, sync, EDL, render plan, FFprobe, renderer adapter, FFmpeg command, examples, and review tests.
-- `tests/integration/test_pipeline.py` — real MoviePy render, deliberate real FFmpeg fallback, 72-second contract render, output probing, evidence, and approval workflow.
+- `tests/integration/test_pipeline.py` — real MoviePy render, deliberate real FFmpeg fallback, custom generated-credit propagation/rendering, 72-second contract render, output probing, evidence, and exact-byte approval workflow.
 - `handoff.md` — this implementation and verification record.
 
 - `src/video_discovery.py` — deterministic recursive discovery, exclusions, probing, stable IDs, reports, and conservative related-camera grouping.
 - `src/camera_grouping.py` — deterministic multi-signal pair scoring, cached audio analysis, offset/stability/transient evidence, derived-copy detection, confidence states, and best-group selection.
 - `src/sync_assistant.py` — local FFmpeg audio-window decoding, transient/correlation analysis, ranked candidates, confidence policy, and human confirmation.
 - `src/edl_generator.py` — synchronized common-duration calculation and validated deterministic EDL proposals.
-- `src/auto_pipeline.py` — generated project configuration, preparation outcomes, summary evidence, and safe auto-draft orchestration.
-- `tests/unit/test_video_discovery.py`, `test_sync_assistant.py`, `test_edl_generator.py`, `test_auto_pipeline.py` — focused automation tests.
+- `src/auto_pipeline.py` — generated project configuration, configurable closing credits, preparation outcomes, summary evidence, and safe auto-draft orchestration.
+- `tests/unit/test_video_discovery.py`, `test_sync_assistant.py`, `test_edl_generator.py`, `test_auto_pipeline.py` — focused automation tests, including generated credit defaults/customization/validation.
 - `tests/unit/test_camera_grouping.py`, `test_preflight.py`, `test_media_probe.py` — grouping signals/selection, local executable resolution, and creation-time metadata coverage.
 - `tests/integration/test_pipeline.py` — opt-in synthetic compliant automatic workflow with generated temporary media.
-- `README.md`, `architecture.md` — automatic, assisted, expert, confidence, smoke, outcome-state, and privacy documentation.
+- `README.md`, `architecture.md` — automatic, assisted, expert, credit configuration, checksum-integrity, confidence, smoke, outcome-state, and privacy documentation.
 - `config/generated_project.json`, `config/generated_sync.json`, `edl/generated_editing_decisions.json` — latest three-camera real-footage automatic smoke artifacts with automation provenance and unverified synchronization.
 - `evidence/reports/camera_grouping.json` — ignored local all-pair grouping evidence; 21 real pairs with signals, scores, offsets, confidence, and reasons.
-- `output/draft/kindergarten-graduation-demo-unverified-sync-smoke_draft.mp4` — ignored local 18-second real automatic draft; never promoted or approved.
+- `output/draft/kindergarten-graduation-demo-unverified-sync-smoke_draft.mp4` — ignored local 20-second custom-credit automatic draft; never promoted or approved.
 
 ### Approved footage inventory
 
@@ -155,6 +166,14 @@ modified, moved, renamed, deleted, or staged.
   - Reason: Existing validation, render planning, atomic promotion, evidence, review, and checksum approval are working safety boundaries.
   - Consequences: Generated JSON is reloaded through `prepare_pipeline`; validators were not weakened.
   - Affected files: `src/auto_pipeline.py`, `src/edl_generator.py`, `src/main.py`.
+- Decision: Closing-credit wording is fixed during preparation, never during approval.
+  - Reason: Approval is bound to the exact reviewed SHA-256 and must not mutate or rerender media.
+  - Consequences: `--credits` and `--credits-duration` populate generated project configuration and the existing render plan. The default visible text is `Edited by the Project Team`; review warnings remain operational metadata.
+  - Affected files: `src/auto_pipeline.py`, `src/main.py`, `README.md`, `architecture.md`; `src/review.py` intentionally unchanged.
+- Decision: An omitted credit duration preserves existing mode-specific presentation timing.
+  - Reason: Normal output already used four seconds while short non-acceptance smoke output used one second.
+  - Consequences: `--credits-duration` overrides either mode, but omission remains four seconds normally and one second for smoke.
+  - Affected files: `src/auto_pipeline.py`, `tests/unit/test_auto_pipeline.py`.
 - Decision: The earlier filename-only camera grouping rule is superseded by deterministic multi-signal pairwise grouping.
   - Reason: Filename formats and device clocks vary; local audio similarity, offset stability, shared transients, metadata time, and common coverage provide stronger explainable evidence.
   - Consequences: Every eligible pair is analyzed and reported. Audio evidence and minimum duration are mandatory; filename, codec, resolution, or duration similarity alone cannot accept a pair.
@@ -272,6 +291,17 @@ modified, moved, renamed, deleted, or staged.
 - Generated-artifact validation: `python -m src.main validate --config config/generated_project.json --sync config/generated_sync.json --edl edl/generated_editing_decisions.json` — passed; 18.000 s plan, three cameras, four segments, three switches.
 - Independent real draft probe: local FFprobe `-show_entries format=duration:stream=index,codec_type,codec_name,width,height,r_frame_rate` — 18.000000 s, H.264 1280×720 at 30 fps, AAC audio.
 - Independent `Get-FileHash -Algorithm SHA256` matched evidence (`7DB5CF4D202AE7360963E03E0537C78E57FD3548272BCCC00170C1F8C734F377`); `output/final` contained zero promoted outputs.
+
+### Configurable-credit commands
+
+- Focused regression: `python -m pytest tests/unit/test_auto_pipeline.py tests/unit/test_validation.py tests/unit/test_render_plan.py tests/unit/test_review.py -q` — 19 passed in 0.93 s.
+- Real requested workflow: `python -m src.main auto --input input --duration 20 --title "Kindergarten Graduation Demo" --credits "Edited by the Project Team | BTIS3053" --credits-duration 4 --allow-smoke` — passed in 121.7 s.
+- Independent output probe: local FFprobe reported 20.000000 s, H.264 1280×720 at 30 fps, and AAC audio.
+- Generated-artifact validation: `python -m src.main validate --config config/generated_project.json --sync config/generated_sync.json --edl edl/generated_editing_decisions.json` — passed; 20.000 s, four segments, three switches, custom four-second closing credit.
+- Closing-screen inspection: extracted the frame at 18.0 s to ignored `temp/inspection/custom_credits.png`; it visibly contains `Edited by the Project Team | BTIS3053` and no review-warning text.
+- Media-enabled full suite with local FFmpeg/FFprobe: `python -m pytest -q` — 62 passed in 24.31 s.
+- Final required ordinary suite: `python -m pytest -q` — 58 passed, 4 skipped in 0.56 s; the skips are opt-in media tests.
+- Static verification: `python -m ruff check src tests`, `python -m ruff format --check src tests`, and `python -m compileall -q src tests` — all passed; 42 Python files formatted.
 
 ## 7. Test and Verification Results
 
@@ -399,10 +429,20 @@ modified, moved, renamed, deleted, or staged.
 - Automatic summary confirms `human_review_required: true` and `final_approval_performed: false`; the `smoke` and `unverified-sync` filename makes the draft ineligible for final approval. No file was created under `output/final`.
 - Synthetic media result: A/B with unrelated filenames and known 300 ms offset were selected; unrelated C was rejected; an `automatic_final.mp4` copy was excluded; generated project/sync/EDL, 90-second FFmpeg fallback draft, output validation, evidence, and non-approval passed. Fixtures contained no real individuals and were deleted with the temporary directory.
 
+### Configurable closing-credit verification (2026-07-27)
+
+- Default generated text is `Edited by the Project Team`; smoke omission retains a one-second credit, while normal omission retains four seconds.
+- Custom text is trimmed and serialized exactly; custom duration is used by the generated typed configuration and render plan.
+- Blank text and zero, negative, NaN, or infinite durations fail with actionable `PreparationError` messages before media discovery.
+- Synthetic automatic integration passes `Edited by Synthetic Team | BTIS3053` and a three-second duration through generated JSON into the FFmpeg fallback render plan; its 90-second rendered output and evidence validate.
+- Real automatic MoviePy rendering produced the requested four-second credit screen. Generated project JSON, render evidence, FFprobe, and a sampled closing frame independently confirm the result.
+- Real output: `DRAFT_RENDERED_WITH_UNVERIFIED_SYNC`; 20.000 s; SHA-256 `1050763ae5ba81f2c81981bd47c710432f78b348c2e978414d529ce8acd55ac5`; review still required; final approval not performed.
+- Exact-byte approval integrity remains covered by integration: promoted final bytes equal the reviewed draft bytes. `src/review.py` was not modified.
+
 ## 8. Known Issues and Limitations
 
 - Current automatic sync suggests 2.310 s / 4.270 s / 1.470 s for the selected three-camera group; the earlier manual pair inspection recorded a provisional 5.695 s / 5.695 s shared landmark. None is a verified deliberate clap. This disagreement requires human audio/visual review and remains explicit in evidence.
-- `config/generated_project.json`, `config/generated_sync.json`, and `edl/generated_editing_decisions.json` currently represent the 18-second three-camera unverified-sync smoke workflow; manual files remain unchanged.
+- `config/generated_project.json`, `config/generated_sync.json`, and `edl/generated_editing_decisions.json` currently represent the 20-second three-camera custom-credit unverified-sync smoke workflow; manual files remain unchanged.
 - Pairwise grouping uses only the first 45 seconds of low-rate audio and assumes a constant bounded offset. Repetitive music, heavy noise reduction, severe drift, or missing audio can still cause rejection or require explicit human camera selection.
 - Audio correlation assumes a constant offset within the analysed window and does not correct clock drift.
 
@@ -475,7 +515,7 @@ modified, moved, renamed, deleted, or staged.
 - [x] Closing credits rendered
 - [x] Lower-third, label, or subtitle rendered
 - [x] At least one transition rendered
-- [x] Draft MP4 exported (18-second approved-footage smoke draft)
+- [x] Draft MP4 exported (latest approved-footage custom-credit smoke draft is 20 seconds)
 - [ ] Approved-footage output duration validated as 60–180 seconds (blocked by source duration)
 - [x] Synchronisation evidence recorded with unconfirmed-clap status
 - [x] MoviePy renderer implemented
@@ -511,4 +551,10 @@ modified, moved, renamed, deleted, or staged.
 - [x] Approved-footage discovery, sync analysis, insufficient-duration report, and smoke render executed
 - [x] Synthetic 90-second automatic end-to-end workflow executed successfully
 - [x] Synthetic same-event A/B, unrelated C, and derived-copy grouping/render workflow executed successfully
+- [x] `prepare` and `auto` accept custom credit text and duration
+- [x] Omitted credit text defaults to `Edited by the Project Team`
+- [x] Visible credit text contains no human-review warning
+- [x] Generated credit values are validated, serialized, and rendered
+- [x] Closing-credit screen remains mandatory
+- [x] Approval still promotes the exact reviewed SHA-256 without modification or rerendering
 - [x] README and architecture document the Automatic Preparation Layer

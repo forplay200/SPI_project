@@ -8,7 +8,9 @@ from unittest.mock import patch
 
 import numpy as np
 
-from src.auto_pipeline import prepare_automatic, run_automatic
+from src.auto_pipeline import DEFAULT_CREDITS_TEXT, prepare_automatic, run_automatic
+from src.errors import PreparationError
+from src.main import build_parser
 from src.models import (
     AutomationOutcome,
     MediaMetadata,
@@ -51,6 +53,8 @@ class AutoPipelineTests(unittest.TestCase):
         source_duration: float,
         requested_duration: float,
         allow_smoke: bool = False,
+        credits: str | None = None,
+        credits_duration: float | None = None,
     ):
         first, _ = self.create_inputs(root)
 
@@ -83,12 +87,18 @@ class AutoPipelineTests(unittest.TestCase):
             patch("src.camera_grouping.decode_audio_window", side_effect=decoded),
             patch("src.auto_pipeline.prepare_pipeline"),
         ):
+            options: dict[str, object] = {}
+            if credits is not None:
+                options["credits"] = credits
+            if credits_duration is not None:
+                options["credits_duration"] = credits_duration
             return prepare_automatic(
                 project_root=root,
                 input_path=root / "input",
                 requested_duration_seconds=requested_duration,
                 title="Synthetic Ceremony",
                 allow_smoke=allow_smoke,
+                **options,
             )
 
     def test_prepare_generates_valid_project_sync_edl_and_summary(self) -> None:
@@ -104,6 +114,8 @@ class AutoPipelineTests(unittest.TestCase):
             self.assertTrue(result.edl_path and result.edl_path.is_file())
             config = load_project_config(result.project_path)
             self.assertEqual(len(config.cameras), 2)
+            self.assertEqual(config.credits.text, DEFAULT_CREDITS_TEXT)
+            self.assertEqual(config.credits.duration, 4.0)
             edl = json.loads(result.edl_path.read_text(encoding="utf-8"))
             self.assertGreaterEqual(len(edl["timeline"]), 4)
             self.assertTrue(
@@ -133,6 +145,77 @@ class AutoPipelineTests(unittest.TestCase):
             self.assertEqual(smoke.outcome, AutomationOutcome.READY_FOR_SMOKE_ONLY)
             self.assertTrue(smoke.smoke)
             self.assertIn("smoke", load_project_config(smoke.project_path).project)
+
+    def test_generated_credits_use_professional_default(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.prepare_with_mock_media(
+                Path(directory),
+                source_duration=100,
+                requested_duration=18,
+                allow_smoke=True,
+            )
+            config = load_project_config(result.project_path)
+            self.assertEqual(config.credits.text, DEFAULT_CREDITS_TEXT)
+            self.assertEqual(config.credits.duration, 1.0)
+            self.assertNotIn("human review required", config.credits.text.casefold())
+
+    def test_custom_credits_and_duration_are_written_to_generated_project(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.prepare_with_mock_media(
+                Path(directory),
+                source_duration=100,
+                requested_duration=20,
+                allow_smoke=True,
+                credits="  Edited by the Project Team | BTIS3053  ",
+                credits_duration=4,
+            )
+            config = load_project_config(result.project_path)
+            self.assertEqual(
+                config.credits.text, "Edited by the Project Team | BTIS3053"
+            )
+            self.assertEqual(config.credits.duration, 4.0)
+
+    def test_credit_options_are_validated_before_media_processing(self) -> None:
+        for invalid_duration in (0.0, -1.0, float("nan"), float("inf")):
+            with (
+                self.subTest(credits_duration=invalid_duration),
+                self.assertRaisesRegex(
+                    PreparationError, "credits-duration must be a finite number"
+                ),
+            ):
+                prepare_automatic(
+                    project_root=Path("."),
+                    input_path=Path("input"),
+                    requested_duration_seconds=90,
+                    title="Synthetic",
+                    credits_duration=invalid_duration,
+                )
+        with self.assertRaisesRegex(PreparationError, "credits must be a non-empty"):
+            prepare_automatic(
+                project_root=Path("."),
+                input_path=Path("input"),
+                requested_duration_seconds=90,
+                title="Synthetic",
+                credits="   ",
+            )
+
+    def test_prepare_and_auto_cli_accept_credit_options(self) -> None:
+        parser = build_parser()
+        for command in ("prepare", "auto"):
+            args = parser.parse_args(
+                [
+                    command,
+                    "--credits",
+                    "Edited by Team | BTIS3053",
+                    "--credits-duration",
+                    "4",
+                ]
+            )
+            self.assertEqual(args.credits, "Edited by Team | BTIS3053")
+            self.assertEqual(args.credits_duration, 4.0)
+        defaults = parser.parse_args(["auto"])
+        self.assertEqual(defaults.credits, DEFAULT_CREDITS_TEXT)
+        self.assertIsNone(defaults.credits_duration)
 
     def test_auto_renders_draft_but_never_approves(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
