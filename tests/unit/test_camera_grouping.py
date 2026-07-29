@@ -248,7 +248,12 @@ class CameraGroupSelectionTests(unittest.TestCase):
             result = group_camera_sources(videos, input_path=Path("."))
         self.assertEqual(result.state, CameraGroupingState.CAMERA_GROUP_LOW_CONFIDENCE)
         self.assertEqual(result.selected_videos, ())
-        self.assertIn("Highest rejected pair", result.reason)
+        self.assertEqual(
+            [video.camera_id for video in result.suggested_videos],
+            ["camera_01", "camera_02"],
+        )
+        self.assertIn("suggested for human verification", result.reason)
+        self.assertTrue(result.pair_scores[0].suggested)
 
 
 if __name__ == "__main__":

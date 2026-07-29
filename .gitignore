@@ -21,6 +21,7 @@ evidence/approvals/*
 !evidence/approvals/.gitkeep
 evidence/screenshots/*
 !evidence/screenshots/.gitkeep
+evidence/ui/
 
 # Python
 __pycache__/
@@ -32,9 +33,18 @@ htmlcov/
 .venv/
 venv/
 
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+
+# Guided UI generated pipeline artefacts
+config/project-*_project.json
+config/project-*_sync.json
+edl/project-*_editing_decisions.json
+
 # Editors and operating systems
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
-

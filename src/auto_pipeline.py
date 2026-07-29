@@ -9,7 +9,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from .camera_grouping import group_camera_sources
-from .edl_generator import generate_edl, maximum_honest_output_duration
+from .edl_generator import calculate_duration_metrics, generate_edl
 from .errors import PreparationError
 from .evidence import utc_now
 from .json_utils import write_generated_json, write_json_atomic
@@ -164,9 +164,9 @@ def _summary_payload(
         "master_camera": result.master_camera,
         "sync_status": result.sync_status,
         "requested_duration_seconds": result.requested_duration_seconds,
-        "maximum_honest_common_duration_seconds": (
-            result.maximum_honest_duration_seconds
-        ),
+        "common_overlap_duration": result.common_overlap_duration,
+        "total_event_coverage": result.total_event_coverage,
+        "maximum_renderable_duration": result.maximum_renderable_duration,
         "generated_project": str(result.project_path) if result.project_path else None,
         "generated_sync": str(result.sync_path) if result.sync_path else None,
         "generated_edl": str(result.edl_path) if result.edl_path else None,
@@ -220,10 +220,12 @@ def prepare_automatic(
     ffmpeg_executable: str | Path | None = None,
     ffprobe_executable: str | Path | None = None,
     search_window_seconds: float = 15.0,
+    alignment_window_seconds: float = 120.0,
     allow_smoke: bool = False,
     include_derived: bool = False,
     overwrite: bool = False,
     camera_files: tuple[Path, ...] = (),
+    continue_low_confidence: bool = False,
 ) -> PreparationResult:
     credits = credits.strip()
     if not credits:
@@ -260,8 +262,16 @@ def prepare_automatic(
         report_path=grouping_path,
     )
     group = grouping.selected_videos
+    low_confidence_override = bool(
+        continue_low_confidence and grouping.confidence in {"low", "medium"}
+    )
+    if not group and continue_low_confidence and len(grouping.suggested_videos) >= 2:
+        group = grouping.suggested_videos
     if len(group) < 2 or (
-        grouping.confidence == "medium" and not allow_smoke and not camera_files
+        grouping.confidence == "medium"
+        and not allow_smoke
+        and not camera_files
+        and not continue_low_confidence
     ):
         medium_warning = (
             "The best camera group has medium confidence and may be used only for "
@@ -276,7 +286,9 @@ def prepare_automatic(
             master_camera=None,
             sync_status="NOT_RUN",
             requested_duration_seconds=requested_duration_seconds,
-            maximum_honest_duration_seconds=None,
+            common_overlap_duration=None,
+            total_event_coverage=None,
+            maximum_renderable_duration=None,
             project_path=None,
             sync_path=None,
             edl_path=None,
@@ -288,7 +300,12 @@ def prepare_automatic(
             camera_group_score=grouping.best_score,
             analysed_pair_count=grouping.analysed_pair_count,
             selected_camera_paths=tuple(
-                video.relative_path for video in grouping.selected_videos
+                video.relative_path
+                for video in (
+                    grouping.suggested_videos
+                    if grouping.suggested_videos
+                    else grouping.selected_videos
+                )
             ),
             excluded_derived_count=grouping.excluded_derived_count,
         )
@@ -306,6 +323,7 @@ def prepare_automatic(
         cameras,
         master_camera=master_camera,
         search_window_seconds=search_window_seconds,
+        alignment_window_seconds=alignment_window_seconds,
         ffmpeg_executable=ffmpeg_executable,
         sync_path=sync_path,
         report_path=reports / "sync_candidates.json",
@@ -313,6 +331,12 @@ def prepare_automatic(
     )
     complete_sync = all(
         item.selected_timestamp_seconds is not None for item in analyses
+    )
+    sync_sanity = sync_data.get("sync_sanity")
+    sync_sanity_warnings = (
+        [str(item) for item in sync_sanity.get("warnings", [])]
+        if isinstance(sync_sanity, dict)
+        else []
     )
     base_project_name = f"{_slug(title)}-unverified-sync"
     if not complete_sync:
@@ -332,29 +356,42 @@ def prepare_automatic(
         result = PreparationResult(
             outcome=AutomationOutcome.NEEDS_SYNC_CONFIRMATION,
             discovered_count=len(discovery.videos),
-            usable_camera_count=len(cameras),
+            usable_camera_count=grouping.eligible_count,
             master_camera=master_camera,
             sync_status="NEEDS_SYNC_CONFIRMATION",
             requested_duration_seconds=requested_duration_seconds,
-            maximum_honest_duration_seconds=None,
+            common_overlap_duration=None,
+            total_event_coverage=None,
+            maximum_renderable_duration=None,
             project_path=project_path,
             sync_path=sync_path,
             edl_path=None,
             summary_path=summary_path,
             render_permitted=False,
             smoke=False,
-            warnings=(
-                (
-                    "At least one camera has no reliable audio transient. Candidate "
-                    "times were saved, but no missing timestamp was invented."
-                ),
+            warnings=tuple(
+                [
+                    (
+                        "At least one camera has no reliable audio transient. "
+                        "Candidate times were saved, but no missing timestamp was "
+                        "invented."
+                    )
+                ]
+                + (
+                    [
+                        (
+                            "The low-confidence camera-group suggestion was "
+                            "explicitly continued for human verification."
+                        )
+                    ]
+                    if low_confidence_override
+                    else []
+                )
             ),
             camera_group_state=grouping.state.value,
             camera_group_score=grouping.best_score,
             analysed_pair_count=grouping.analysed_pair_count,
-            selected_camera_paths=tuple(
-                video.relative_path for video in grouping.selected_videos
-            ),
+            selected_camera_paths=tuple(video.relative_path for video in group),
             excluded_derived_count=grouping.excluded_derived_count,
         )
         write_json_atomic(summary_path, _summary_payload(result))
@@ -384,7 +421,8 @@ def prepare_automatic(
         smoke=False,
         target_duration=requested_duration_seconds,
     )
-    maximum_standard = maximum_honest_output_duration(standard_config)
+    standard_metrics = calculate_duration_metrics(standard_config)
+    maximum_standard = standard_metrics.maximum_renderable_duration
     smoke = False
     target_duration = requested_duration_seconds
     if requested_duration_seconds > maximum_standard + 0.001:
@@ -405,39 +443,66 @@ def prepare_automatic(
                 project_path, project_data, overwrite=managed_overwrite
             )
             result = PreparationResult(
-                outcome=AutomationOutcome.INSUFFICIENT_COMMON_DURATION,
+                outcome=AutomationOutcome.INSUFFICIENT_RENDERABLE_DURATION,
                 discovered_count=len(discovery.videos),
-                usable_camera_count=len(cameras),
+                usable_camera_count=grouping.eligible_count,
                 master_camera=master_camera,
                 sync_status="NEEDS_SYNC_CONFIRMATION",
                 requested_duration_seconds=requested_duration_seconds,
-                maximum_honest_duration_seconds=maximum_standard,
+                common_overlap_duration=standard_metrics.common_overlap_duration,
+                total_event_coverage=standard_metrics.total_event_coverage,
+                maximum_renderable_duration=maximum_standard,
                 project_path=project_path,
                 sync_path=sync_path,
                 edl_path=None,
                 summary_path=summary_path,
                 render_permitted=False,
                 smoke=False,
-                warnings=(
-                    (
-                        "The requested duration exceeds the synchronized source boundary. "
-                        "No looping, padding, freezing, or time stretching was used."
-                    ),
+                warnings=tuple(
+                    [
+                        (
+                            "The requested duration exceeds the maximum coverage-aware "
+                            "renderable duration. No looping, padding, freezing, or "
+                            "time stretching was used."
+                        )
+                    ]
+                    + sync_sanity_warnings
+                    + (
+                        [
+                            (
+                                "The camera-group suggestion was explicitly "
+                                "continued for human verification."
+                            )
+                        ]
+                        if low_confidence_override
+                        else []
+                    )
                 ),
                 camera_group_state=grouping.state.value,
                 camera_group_score=grouping.best_score,
                 analysed_pair_count=grouping.analysed_pair_count,
-                selected_camera_paths=tuple(
-                    video.relative_path for video in grouping.selected_videos
-                ),
+                selected_camera_paths=tuple(video.relative_path for video in group),
                 excluded_derived_count=grouping.excluded_derived_count,
             )
             write_json_atomic(summary_path, _summary_payload(result))
             return result
         smoke = True
+        smoke_capacity_config = _typed_config(
+            project_name=base_project_name + "-smoke",
+            master_camera=master_camera,
+            cameras=synced_cameras,
+            title=title,
+            credits=credits,
+            credits_duration=credits_duration,
+            smoke=True,
+            target_duration=requested_duration_seconds,
+        )
+        smoke_metrics = calculate_duration_metrics(
+            smoke_capacity_config, allow_smoke=True
+        )
         target_duration = min(
             requested_duration_seconds,
-            maximum_standard - 6.0,
+            smoke_metrics.maximum_renderable_duration,
         )
     elif requested_duration_seconds < 60:
         if not allow_smoke:
@@ -447,7 +512,8 @@ def prepare_automatic(
         smoke = True
     if smoke and target_duration <= 6:
         raise PreparationError(
-            "The common footage is too short even for a four-segment smoke render."
+            "The renderable event coverage is too short even for a four-segment "
+            "smoke render."
         )
 
     project_name = base_project_name + ("-smoke" if smoke else "")
@@ -497,20 +563,29 @@ def prepare_automatic(
     )
     warnings = [
         "Audio transient timestamps are suggestions, not a verified deliberate clap."
-    ]
+    ] + sync_sanity_warnings
+    if low_confidence_override:
+        warnings.append(
+            "The camera group was a low-confidence suggestion explicitly accepted "
+            "for human verification; grouping confidence does not verify "
+            "synchronization."
+        )
     if smoke:
         warnings.append(
             "Smoke output does not satisfy the 60-180 second submission requirement "
             "and is ineligible for final approval."
         )
+    duration_metrics = calculate_duration_metrics(config, allow_smoke=smoke)
     result = PreparationResult(
         outcome=outcome,
         discovered_count=len(discovery.videos),
-        usable_camera_count=len(cameras),
+        usable_camera_count=grouping.eligible_count,
         master_camera=master_camera,
         sync_status="NEEDS_SYNC_CONFIRMATION",
         requested_duration_seconds=requested_duration_seconds,
-        maximum_honest_duration_seconds=maximum_honest_output_duration(config),
+        common_overlap_duration=duration_metrics.common_overlap_duration,
+        total_event_coverage=duration_metrics.total_event_coverage,
+        maximum_renderable_duration=duration_metrics.maximum_renderable_duration,
         project_path=project_path,
         sync_path=sync_path,
         edl_path=edl_path,
@@ -521,9 +596,7 @@ def prepare_automatic(
         camera_group_state=grouping.state.value,
         camera_group_score=grouping.best_score,
         analysed_pair_count=grouping.analysed_pair_count,
-        selected_camera_paths=tuple(
-            video.relative_path for video in grouping.selected_videos
-        ),
+        selected_camera_paths=tuple(video.relative_path for video in group),
         excluded_derived_count=grouping.excluded_derived_count,
     )
     write_json_atomic(summary_path, _summary_payload(result))

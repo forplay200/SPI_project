@@ -71,10 +71,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--report", type=Path, default=Path("evidence/reports/sync_candidates.json")
     )
     detect_sync.add_argument("--search-window", type=float, default=15.0)
+    detect_sync.add_argument("--alignment-window", type=float, default=120.0)
     detect_sync.add_argument("--ffmpeg", type=Path)
     detect_sync.add_argument("--ffprobe", type=Path)
     detect_sync.add_argument("--overwrite", action="store_true")
     detect_sync.add_argument("--camera-file", type=Path, action="append", default=[])
+    detect_sync.add_argument("--continue-low-confidence", action="store_true")
 
     confirm_sync = subparsers.add_parser(
         "confirm-sync", help="Record one human-verified clap timestamp."
@@ -84,6 +86,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     confirm_sync.add_argument("--camera", required=True)
     confirm_sync.add_argument("--timestamp", type=float, required=True)
+    confirm_sync.add_argument(
+        "--config", type=Path, default=Path("config/generated_project.json")
+    )
+    confirm_sync.add_argument("--ffprobe", type=Path)
+    confirm_sync.add_argument("--acknowledge-sync-risk", action="store_true")
 
     generate = subparsers.add_parser(
         "generate-edl", help="Generate a deterministic rule-based EDL proposal."
@@ -115,12 +122,14 @@ def build_parser() -> argparse.ArgumentParser:
             help="Closing-credit seconds; defaults to 4 normally and 1 in smoke mode.",
         )
         command.add_argument("--search-window", type=float, default=15.0)
+        command.add_argument("--alignment-window", type=float, default=120.0)
         command.add_argument("--allow-smoke", action="store_true")
         command.add_argument("--include-derived", action="store_true")
         command.add_argument("--overwrite", action="store_true")
         command.add_argument("--ffmpeg", type=Path)
         command.add_argument("--ffprobe", type=Path)
         command.add_argument("--camera-file", type=Path, action="append", default=[])
+        command.add_argument("--continue-low-confidence", action="store_true")
 
     prepare = subparsers.add_parser(
         "prepare", help="Discover, analyse sync, generate, and validate artefacts."
@@ -221,6 +230,8 @@ def run(args: argparse.Namespace) -> int:
                 report_path=Path("evidence/reports/camera_grouping.json"),
             )
             group = grouping.selected_videos
+            if not group and args.continue_low_confidence:
+                group = grouping.suggested_videos
             if len(group) < 2:
                 raise PreparationError(
                     f"No related camera group could be established safely after "
@@ -242,6 +253,7 @@ def run(args: argparse.Namespace) -> int:
             cameras,
             master_camera=master_camera,
             search_window_seconds=args.search_window,
+            alignment_window_seconds=args.alignment_window,
             ffmpeg_executable=args.ffmpeg,
             sync_path=args.output,
             report_path=args.report,
@@ -262,10 +274,16 @@ def run(args: argparse.Namespace) -> int:
         return 0
 
     if args.command == "confirm-sync":
+        cameras: tuple[CameraSource, ...] = ()
+        if args.config.is_file():
+            config = load_project_config(args.config)
+            cameras = probe_cameras(config.cameras, ffprobe_executable=args.ffprobe)
         payload = confirm_sync_timestamp(
             args.sync,
             camera_id=args.camera,
             timestamp_seconds=args.timestamp,
+            cameras=cameras,
+            acknowledge_risk=args.acknowledge_sync_risk,
         )
         print(f"Recorded human confirmation for {args.camera}: {args.timestamp:.3f}s")
         print(f"Sync status: {payload['acceptance_status']}")
@@ -292,6 +310,15 @@ def run(args: argparse.Namespace) -> int:
             "Expected duration: "
             f"{float(metadata['expected_output_duration_seconds']):.3f}s"
         )
+        print(
+            "Common synchronized overlap: "
+            f"{float(metadata['common_overlap_duration']):.3f}s"
+        )
+        print(f"Total event coverage: {float(metadata['total_event_coverage']):.3f}s")
+        print(
+            "Maximum renderable duration: "
+            f"{float(metadata['maximum_renderable_duration']):.3f}s"
+        )
         print("Human review required: yes")
         return 0
 
@@ -306,10 +333,12 @@ def run(args: argparse.Namespace) -> int:
             "ffmpeg_executable": args.ffmpeg,
             "ffprobe_executable": args.ffprobe,
             "search_window_seconds": args.search_window,
+            "alignment_window_seconds": args.alignment_window,
             "allow_smoke": args.allow_smoke,
             "include_derived": args.include_derived,
             "overwrite": args.overwrite,
             "camera_files": tuple(args.camera_file),
+            "continue_low_confidence": args.continue_low_confidence,
         }
         if args.command == "prepare":
             result = prepare_automatic(**options)
@@ -337,10 +366,29 @@ def run(args: argparse.Namespace) -> int:
         print(f"Outcome: {result.outcome.value}")
         print(f"Sync status: {result.sync_status}")
         print(f"Requested duration: {result.requested_duration_seconds:.3f} seconds")
-        maximum = result.maximum_honest_duration_seconds
         print(
-            "Maximum honest common duration: "
-            + (f"{maximum:.3f} seconds" if maximum is not None else "unknown")
+            "Common synchronized overlap: "
+            + (
+                f"{result.common_overlap_duration:.3f} seconds"
+                if result.common_overlap_duration is not None
+                else "unknown"
+            )
+        )
+        print(
+            "Total event coverage: "
+            + (
+                f"{result.total_event_coverage:.3f} seconds"
+                if result.total_event_coverage is not None
+                else "unknown"
+            )
+        )
+        print(
+            "Maximum renderable duration: "
+            + (
+                f"{result.maximum_renderable_duration:.3f} seconds"
+                if result.maximum_renderable_duration is not None
+                else "unknown"
+            )
         )
         print(f"Generated project: {result.project_path or 'none'}")
         print(f"Generated sync report: {result.sync_path or 'none'}")

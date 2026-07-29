@@ -198,7 +198,7 @@ class AutomationOutcome(str, Enum):
     READY_FOR_SMOKE_ONLY = "READY_FOR_SMOKE_ONLY"
     NEEDS_CAMERA_SELECTION = "NEEDS_CAMERA_SELECTION"
     NEEDS_SYNC_CONFIRMATION = "NEEDS_SYNC_CONFIRMATION"
-    INSUFFICIENT_COMMON_DURATION = "INSUFFICIENT_COMMON_DURATION"
+    INSUFFICIENT_RENDERABLE_DURATION = "INSUFFICIENT_RENDERABLE_DURATION"
     INVALID_INPUT = "INVALID_INPUT"
     DRAFT_RENDERED = "DRAFT_RENDERED"
     DRAFT_RENDERED_WITH_UNVERIFIED_SYNC = "DRAFT_RENDERED_WITH_UNVERIFIED_SYNC"
@@ -255,6 +255,7 @@ class PairwiseCameraScore:
     reason: str
     window_offsets_seconds: tuple[float, ...] = ()
     window_correlations: tuple[float, ...] = ()
+    suggested: bool = False
 
 
 @dataclass(frozen=True)
@@ -268,6 +269,7 @@ class CameraGroupingResult:
     best_score: float | None
     confidence: str
     reason: str
+    suggested_videos: tuple[DiscoveredVideo, ...] = ()
     report_path: Path | None = None
 
 
@@ -302,6 +304,30 @@ class CameraSyncAnalysis:
 
 
 @dataclass(frozen=True)
+class CoverageInterval:
+    """A camera's usable interval expressed on the synchronized master timeline."""
+
+    camera_id: str
+    start_seconds: float
+    end_seconds: float
+
+    @property
+    def duration_seconds(self) -> float:
+        return max(0.0, self.end_seconds - self.start_seconds)
+
+
+@dataclass(frozen=True)
+class DurationMetrics:
+    """Distinct synchronization, event-coverage, and renderability durations."""
+
+    common_overlap_duration: float
+    total_event_coverage: float
+    maximum_renderable_duration: float
+    presentation_duration: float
+    coverage_intervals: tuple[CoverageInterval, ...] = ()
+
+
+@dataclass(frozen=True)
 class PreparationResult:
     outcome: AutomationOutcome
     discovered_count: int
@@ -309,7 +335,9 @@ class PreparationResult:
     master_camera: str | None
     sync_status: str
     requested_duration_seconds: float
-    maximum_honest_duration_seconds: float | None
+    common_overlap_duration: float | None
+    total_event_coverage: float | None
+    maximum_renderable_duration: float | None
     project_path: Path | None
     sync_path: Path | None
     edl_path: Path | None

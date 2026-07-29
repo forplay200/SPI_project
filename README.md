@@ -9,9 +9,67 @@ reviewable. The established manual EDL workflow is still available.
 Despite the official project title, the implemented camera switching is rule-based.
 It does not use machine learning and must not be described as doing so.
 
+## Guided workflow user interface
+
+The approved interface in `DESIGN.md` is implemented as a six-step local wizard:
+
+1. Footage
+2. Analysis
+3. Synchronisation
+4. Editing Plan
+5. Draft Review
+6. Approval
+
+It adds a React/TypeScript frontend and a local FastAPI adapter in front of the
+existing Python modules. The API calls discovery, grouping, sync, EDL, rendering,
+evidence, review, and approval functions directly; it does not execute CLI commands
+as subprocesses and does not duplicate the editing pipeline.
+
+From the repository root on Windows PowerShell, start the API:
+
+```powershell
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
+```
+
+In a second PowerShell window, install and start the frontend:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`. Interactive API documentation is available at
+`http://127.0.0.1:8000/docs`; health is available at
+`http://127.0.0.1:8000/api/health`.
+
+The Footage screen accepts a workspace-relative local folder such as `input`.
+The browser folder control is only a visual selection aid because browsers do not
+expose arbitrary absolute paths; it never uploads footage. The backend independently
+resolves and restricts input paths to this repository.
+
+The UI shows all discovered and excluded files, selected/master cameras, complete
+pair scores, sync candidates, offsets, confidence, verification state, generated
+segments, transitions, overlays, and decision reasons. Camera selection can be
+corrected explicitly after automatic grouping. EDL edits are limited to the
+approved fields and pass through the existing validator before rendering.
+
+The synchronisation page provides a local media preview starting near each cue.
+Its compact waveform is currently a documented visual placeholder; the local
+audio/video controls are the verification source. An automatically detected
+shared transient is never labelled a verified clap. Grouping confidence and
+manual clap acceptance remain separate.
+
+Review checklist progress persists in the local browser. Smoke mode, unverified
+sync, invalid duration, incomplete review, and checksum changes are visible
+approval blockers. Approval remains a deliberate final action and promotes only
+the exact reviewed SHA-256 without modifying or rerendering the video.
+
 ## Requirements
 
 - Python 3.10 or newer
+- Node.js 20 or newer and npm (guided UI)
+- FastAPI and Uvicorn (local API)
 - MoviePy 2.x (primary renderer)
 - FFmpeg and FFprobe available on `PATH` (probing and fallback rendering)
 - Local, consented or simulated video files
@@ -46,9 +104,9 @@ python -m src.main auto `
 
 The command discovers and probes local videos, scores every eligible pair using
 local metadata and low-cost audio evidence, selects the best supported
-multi-camera group, analyses the first 15 seconds for synchronization cues,
-generates configuration and an EDL, validates them through the existing pipeline,
-and renders a draft only when safe. Filenames are supporting evidence only:
+multi-camera group, analyses the first 15 seconds for transient cues and up to
+120 seconds for offset stability, generates configuration and an EDL, validates
+them through the existing pipeline, and renders a draft only when safe. Filenames are supporting evidence only:
 different prefixes, separators, Unicode names, and device time-zone differences
 do not prevent audio comparison. The command never reviews, approves, publishes,
 or uploads a video.
@@ -119,10 +177,19 @@ signals, score, estimated offset, confidence, and reason.
 Grouping reports `CAMERA_GROUP_CONFIRMED`, `CAMERA_GROUP_SUGGESTED`,
 `CAMERA_GROUP_LOW_CONFIDENCE`, `NO_RELIABLE_CAMERA_GROUP`, or
 `DERIVED_OUTPUTS_ONLY`. High-confidence groups may continue automatically;
-medium-confidence groups are limited to an explicitly labelled smoke run; low
-confidence stops at camera selection. Grouping confidence means the recordings
-probably cover the same event. It does **not** verify that any transient is a
-deliberate clap or satisfy the manual ±100 ms synchronization check.
+medium-confidence groups may continue as an explicitly labelled smoke run. A
+physically usable low-confidence best pair remains visible as a suggestion and
+may continue only after `--continue-low-confidence`; an impossible or zero-overlap
+pair remains blocked. Grouping confidence means the recordings probably cover
+the same event. It does **not** verify that any transient is a deliberate clap or
+satisfy the manual ±100 ms synchronization check.
+
+Offset analysis rejects misleading correlation peaks that preserve less than 60%
+of the shorter recording. It ranks overlap-preserving alternatives, compares
+early, middle, and late windows, and records correlation, overlap, per-window
+offsets, and stability. Suggested offsets of 10 seconds or more require stronger
+correlation and stable multi-window evidence. These are conservative signal
+checks, not semantic recognition of a clap, applause, or music.
 
 ## Assisted preparation workflow
 
@@ -140,10 +207,24 @@ The same `--credits` and `--credits-duration` options are available to
 
 The summary reports one of the explicit states `READY_FOR_DRAFT`,
 `READY_FOR_SMOKE_ONLY`, `NEEDS_CAMERA_SELECTION`,
-`NEEDS_SYNC_CONFIRMATION`, `INSUFFICIENT_COMMON_DURATION`, or `INVALID_INPUT`.
+`NEEDS_SYNC_CONFIRMATION`, `INSUFFICIENT_RENDERABLE_DURATION`, or `INVALID_INPUT`.
 An automatically detected transient is never called a verified clap. Candidate
 timestamps, prominence/correlation metrics, confidence, warnings, and
 `requires_human_verification` are saved for review.
+
+Duration reporting intentionally separates three concepts:
+
+- **Common synchronized overlap** is the interval covered by every selected
+  camera. It supports synchronization review only and is not an edit limit.
+- **Total event coverage** is the union of synchronized camera timelines.
+- **Maximum renderable duration** is the longest output supported by a valid
+  deterministic EDL whose assigned camera covers every individual shot, while
+  preserving shot, switch, transition, and source-boundary rules.
+
+Accordingly, a valid edit can exceed common overlap when cameras started or
+stopped at different times. Disconnected gaps are never filled, and footage is
+not looped, frozen, slowed, or padded. The accepted decision is documented in
+[`docs/adr/0001-coverage-based-renderability.md`](docs/adr/0001-coverage-based-renderability.md).
 
 The individual preparation commands are:
 
@@ -171,17 +252,33 @@ python -m src.main auto `
   --allow-smoke
 ```
 
+A low-confidence but physically usable suggested group can instead be inspected
+through the complete preparation path with an explicit human-verification flag:
+
+```powershell
+python -m src.main prepare `
+  --input input `
+  --duration 90 `
+  --continue-low-confidence
+```
+
 If a human identifies the deliberate clap, record each verified source timestamp
 without hand-editing JSON:
 
 ```powershell
 python -m src.main confirm-sync `
+  --sync config/generated_sync.json `
+  --config config/generated_project.json `
   --camera camera_01 `
   --timestamp 5.695
 ```
 
 All selected cameras must be confirmed before the generated sync file changes to
-the `manual_clap` / `verified` state.
+the `manual_clap` / `verified` state. Confirmation recomputes the exact common
+timeline from `source_time = master_time + offset`, where each offset is the
+camera cue timestamp minus the master cue timestamp. A large offset or a choice
+that destroys most of the common timeline is rejected unless the operator has
+visually or audibly checked the same cue and adds `--acknowledge-sync-risk`.
 
 ## Smoke versus compliant output
 
@@ -218,29 +315,40 @@ Relative camera paths are resolved from the repository root. Inputs inside
 
 ## Current approved demo-footage status
 
-`config/project.json` maps the approved local files
-`input/video_20260619_151529.mp4` and
-`input/VID_20260619_151529.mp4` to stable IDs `camera_wide` and
-`camera_close`. The originals remain ignored by Git and are treated as
-read-only.
+The current approved, read-only set contains four nested source recordings:
 
-No deliberate clap could be confirmed from sampled frames and audio
-visualisations. The 5.695-second values in `config/sync.json` identify a
-measured shared speech transient for smoke testing only; the evidence explicitly
-marks it as unconfirmed and requiring manual clap review.
+- `input/素材/Camera1/Camera1-1.mp4` — 125.109 seconds
+- `input/素材/Camera2/Camera2-1.mp4` — 43.050 seconds
+- `input/素材/Camera3/Camera3-1.mp4` — 95.713 seconds
+- `input/素材/Camera4/Camera4-1.mp4` — 97.106 seconds
 
-Every approved source is shorter than 26 seconds. The selected synchronized pair
-has approximately 22.985 seconds of common usable footage, so it cannot produce
-a compliant 60-second draft without repetition, time stretching, fabricated
-offsets, or excessive title/credit padding. Those workarounds are intentionally
-not used. `config/smoke_project.json` and
-`edl/smoke_editing_decisions.json` provide an honest 18-second renderer test:
+All four are factual angles of the same performance, but no deliberate clap has
+yet been manually verified. Full-recording signal analysis currently suggests
+Camera2/Camera4 most strongly: a shared audio alignment near +39.640 seconds has
+0.826 correlation, full overlap of the shorter recording, and the same estimate
+in all three analysis windows. It remains an unverified shared transient, not a
+verified clap.
+
+An earlier manual configuration used offsets `-2.800`, `+35.810`, and `+45.810`
+seconds. The exact common-timeline calculation reduced usable EDL footage to
+4.440 seconds and total output to 12.440 seconds; this was caused by unsafe manual
+cue choices, not by the overlap formula. The confirmation workflow now reports
+that loss and requires explicit risk acknowledgement for such values.
+
+A requested 120-second output is still honestly impossible with the current
+media: even the two longest sources cannot provide more than approximately
+105.106 seconds including the normal title and credits. A real 20-second
+`unverified-sync-smoke` draft has been rendered successfully from the strongest
+automatic suggestion, but it is not submission-ready and cannot be approved.
+Reproduce the non-acceptance render with:
 
 ```powershell
-python -m src.main render `
-  --config config/smoke_project.json `
-  --sync config/sync.json `
-  --edl edl/smoke_editing_decisions.json
+python -m src.main auto `
+  --input input `
+  --duration 20 `
+  --title "Kindergarten Graduation Synchronisation Demo" `
+  --allow-smoke `
+  --overwrite
 ```
 
 ## Commands
@@ -362,6 +470,16 @@ Run all tests:
 
 ```powershell
 python -m pytest -q
+```
+
+Run the frontend tests and production build:
+
+```powershell
+cd frontend
+npm test
+npm run lint
+npm run format:check
+npm run build
 ```
 
 The test suite includes deterministic unit tests and FFmpeg/MoviePy integration

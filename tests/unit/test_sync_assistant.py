@@ -13,8 +13,10 @@ from src.sync_assistant import (
     SAMPLE_RATE,
     analyse_camera_audio,
     analyse_sync,
+    calculate_sync_sanity,
     confirm_sync_timestamp,
     detect_transient_candidates,
+    rank_alignment_offsets,
 )
 
 
@@ -108,6 +110,105 @@ class SyncAssistantTests(unittest.TestCase):
             )
             self.assertEqual(complete["acceptance_status"], "verified")
             self.assertEqual(complete["cue_type"], "manual_clap")
+
+    def test_offset_ranking_rejects_tiny_overlap_local_maximum(self) -> None:
+        generator = np.random.default_rng(17)
+        master = generator.normal(0, 0.05, SAMPLE_RATE * 24).astype(np.float32)
+        other = generator.normal(0, 0.05, SAMPLE_RATE * 24).astype(np.float32)
+        other[-round(0.2 * SAMPLE_RATE) :] = master[: round(0.2 * SAMPLE_RATE)]
+        alternatives = rank_alignment_offsets(master, other, maximum_offset_seconds=23)
+        self.assertTrue(alternatives)
+        self.assertTrue(
+            all(float(item["overlap_ratio"]) >= 0.6 for item in alternatives)
+        )
+        self.assertTrue(
+            all(abs(float(item["offset_seconds"])) < 10 for item in alternatives)
+        )
+
+    def test_large_offset_requires_stable_multi_window_evidence(self) -> None:
+        frame_count = round(80 / 0.02)
+        generator = np.random.default_rng(21)
+        amplitudes = generator.uniform(0.01, 0.8, frame_count)
+        master = np.repeat(amplitudes, round(SAMPLE_RATE * 0.02)).astype(np.float32)
+        shift_frames = round(20 / 0.02)
+        other_amplitudes = np.concatenate(
+            (np.zeros(shift_frames), amplitudes[:-shift_frames])
+        )
+        other = np.repeat(other_amplitudes, round(SAMPLE_RATE * 0.02)).astype(
+            np.float32
+        )
+        alternatives = rank_alignment_offsets(master, other, maximum_offset_seconds=30)
+        best = alternatives[0]
+        self.assertAlmostEqual(float(best["offset_seconds"]), 20.0, delta=0.03)
+        self.assertTrue(best["large_offset"])
+        self.assertTrue(best["accepted_for_automatic_use"])
+        self.assertEqual(best["supported_windows"], 3)
+
+    def test_sync_sanity_explains_reported_overlap_regression(self) -> None:
+        cameras = (
+            CameraSource("camera_01", Path("1.mp4"), duration_seconds=125.109002),
+            CameraSource("camera_04", Path("4.mp4"), duration_seconds=97.106009),
+            CameraSource("camera_03", Path("3.mp4"), duration_seconds=95.712993),
+            CameraSource("camera_02", Path("2.mp4"), duration_seconds=43.05),
+        )
+        sanity = calculate_sync_sanity(
+            cameras,
+            master_camera="camera_01",
+            timestamps={
+                "camera_01": 3.19,
+                "camera_04": 0.39,
+                "camera_03": 49.0,
+                "camera_02": 39.0,
+            },
+        )
+        self.assertEqual(sanity["status"], "WARNING")
+        self.assertAlmostEqual(
+            float(sanity["common_usable_duration_seconds"]), 4.44, places=3
+        )
+        self.assertAlmostEqual(
+            float(sanity["zero_offset_common_duration_seconds"]), 43.05, places=3
+        )
+        self.assertIn("camera_03", " ".join(sanity["warnings"]))
+
+    def test_large_manual_offset_needs_explicit_risk_acknowledgement(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "generated_sync.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "master_camera": "camera_01",
+                        "clap_timestamps": {"camera_01": 3.19},
+                        "camera_analyses": [
+                            {"camera_id": "camera_01"},
+                            {"camera_id": "camera_02"},
+                        ],
+                        "manual_confirmations": {
+                            "camera_01": {"timestamp_seconds": 3.19}
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            cameras = (
+                CameraSource("camera_01", Path("1.mp4"), duration_seconds=125.109002),
+                CameraSource("camera_02", Path("2.mp4"), duration_seconds=43.05),
+            )
+            with self.assertRaisesRegex(Exception, "risk acknowledgement"):
+                confirm_sync_timestamp(
+                    path,
+                    camera_id="camera_02",
+                    timestamp_seconds=39.0,
+                    cameras=cameras,
+                )
+            accepted = confirm_sync_timestamp(
+                path,
+                camera_id="camera_02",
+                timestamp_seconds=39.0,
+                cameras=cameras,
+                acknowledge_risk=True,
+            )
+            self.assertEqual(accepted["acceptance_status"], "verified")
+            self.assertEqual(accepted["sync_sanity"]["status"], "WARNING")
 
 
 if __name__ == "__main__":

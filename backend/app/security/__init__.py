@@ -1,0 +1,1 @@
+"""Local path-safety helpers."""

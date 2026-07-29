@@ -12,6 +12,7 @@ from .json_utils import write_json_atomic
 from .models import (
     EDL,
     CameraSource,
+    DurationMetrics,
     MediaMetadata,
     RenderPlan,
     RenderResult,
@@ -46,6 +47,7 @@ def write_preflight_evidence(
     edl: EDL,
     plan: RenderPlan,
     sync_config: SyncConfig,
+    duration_metrics: DurationMetrics,
 ) -> None:
     camera_items = []
     for camera in cameras:
@@ -97,6 +99,14 @@ def write_preflight_evidence(
                     for item in edl.timeline
                 ],
             },
+            "duration_metrics": {
+                "common_overlap_duration": duration_metrics.common_overlap_duration,
+                "total_event_coverage": duration_metrics.total_event_coverage,
+                "maximum_renderable_duration": (
+                    duration_metrics.maximum_renderable_duration
+                ),
+                "presentation_duration": duration_metrics.presentation_duration,
+            },
             "render_plan": {
                 "expected_output_duration_seconds": plan.expected_duration_seconds,
                 "output": asdict(plan.output),
@@ -114,6 +124,7 @@ def write_render_evidence(
     output_metadata: MediaMetadata,
     plan: RenderPlan,
     sync_config: SyncConfig,
+    duration_metrics: DurationMetrics,
     warnings: Iterable[str] = (),
 ) -> None:
     all_warnings = list(result.warnings) + list(warnings)
@@ -143,6 +154,14 @@ def write_render_evidence(
                 "verification_threshold_ms": sync_config.verification_threshold_ms,
             },
             "camera_switch_count": plan.switch_count,
+            "duration_metrics": {
+                "common_overlap_duration": duration_metrics.common_overlap_duration,
+                "total_event_coverage": duration_metrics.total_event_coverage,
+                "maximum_renderable_duration": (
+                    duration_metrics.maximum_renderable_duration
+                ),
+                "presentation_duration": duration_metrics.presentation_duration,
+            },
             "command_log_path": (
                 _shared_path(result.command_log_path, project_root)
                 if result.command_log_path

@@ -131,9 +131,13 @@ class AutoPipelineTests(unittest.TestCase):
             )
             self.assertEqual(
                 insufficient.outcome,
-                AutomationOutcome.INSUFFICIENT_COMMON_DURATION,
+                AutomationOutcome.INSUFFICIENT_RENDERABLE_DURATION,
             )
             self.assertFalse(insufficient.render_permitted)
+            summary = json.loads(insufficient.summary_path.read_text())
+            self.assertIn("common_overlap_duration", summary)
+            self.assertIn("total_event_coverage", summary)
+            self.assertIn("maximum_renderable_duration", summary)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             smoke = self.prepare_with_mock_media(
@@ -314,6 +318,72 @@ class AutoPipelineTests(unittest.TestCase):
             self.assertEqual(result.camera_group_state, "CAMERA_GROUP_CONFIRMED")
             self.assertEqual(result.analysed_pair_count, 0)
             self.assertEqual(len(result.selected_camera_paths), 2)
+
+    def test_low_confidence_group_requires_explicit_human_verification_override(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first, _ = self.create_inputs(root)
+            metadata = MediaMetadata(
+                path=first,
+                duration_seconds=100,
+                width=1280,
+                height=720,
+                fps=30,
+                has_video=True,
+                has_audio=True,
+                video_codec="h264",
+                audio_codec="aac",
+            )
+            generator = np.random.default_rng(91)
+            grouping_samples = [
+                generator.normal(0, 0.1, SAMPLE_RATE * 18).astype(np.float32),
+                generator.normal(0, 0.1, SAMPLE_RATE * 18).astype(np.float32),
+            ]
+            prepared = unittest.mock.MagicMock(spec=PreparedPipeline)
+            draft = root / "output" / "draft" / "override-smoke_draft.mp4"
+            render_result = RenderResult(draft, "moviepy", "start", "end", 18.0)
+            with (
+                patch(
+                    "src.video_discovery.probe_video",
+                    side_effect=lambda path, **_: MediaMetadata(
+                        **{**metadata.__dict__, "path": path}
+                    ),
+                ),
+                patch(
+                    "src.camera_grouping.decode_audio_window",
+                    side_effect=grouping_samples,
+                ),
+                patch(
+                    "src.sync_assistant.decode_audio_window",
+                    return_value=grouping_audio(),
+                ),
+                patch("src.auto_pipeline.prepare_pipeline", return_value=prepared),
+                patch(
+                    "src.auto_pipeline.render_draft",
+                    return_value=(render_result, metadata, root / "render.json"),
+                ),
+            ):
+                result, _, rendered = run_automatic(
+                    project_root=root,
+                    input_path=root / "input",
+                    requested_duration_seconds=18,
+                    title="Human confirmed event",
+                    allow_smoke=True,
+                    continue_low_confidence=True,
+                )
+            self.assertEqual(
+                result.camera_group_state,
+                "CAMERA_GROUP_LOW_CONFIDENCE",
+            )
+            self.assertEqual(len(result.selected_camera_paths), 2)
+            self.assertIsNotNone(rendered)
+            self.assertEqual(
+                result.outcome,
+                AutomationOutcome.DRAFT_RENDERED_WITH_UNVERIFIED_SYNC,
+            )
+            self.assertTrue(any("explicitly" in warning for warning in result.warnings))
 
 
 if __name__ == "__main__":
