@@ -1,26 +1,36 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { LoaderCircle } from "lucide-react";
 
+import { api } from "../api/client";
 import type { Job } from "../api/types";
 import { Alert } from "./ui/alert";
+import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 
 export function JobProgress({ job }: { job: Job }) {
-  if (job.status === "FAILED")
+  const queryClient = useQueryClient();
+  const cancel = useMutation({
+    mutationFn: () => api.cancelJob(job.job_id),
+    onSuccess: (next) => queryClient.setQueryData(["job", job.job_id], next),
+  });
+  const currentJob = cancel.data ?? job;
+
+  if (currentJob.status === "FAILED")
     return (
       <Alert tone="danger" title="Processing failed">
-        {job.error ?? job.message}
+        {currentJob.error ?? currentJob.message}
       </Alert>
     );
-  if (job.status === "CANCELLED")
+  if (currentJob.status === "CANCELLED")
     return (
       <Alert tone="warning" title="Job cancelled">
-        {job.warning ?? job.message}
+        {currentJob.warning ?? currentJob.message}
       </Alert>
     );
-  if (job.status === "COMPLETED")
+  if (currentJob.status === "COMPLETED")
     return (
       <Alert tone="success" title="Stage complete">
-        {job.message}
+        {currentJob.message}
       </Alert>
     );
   return (
@@ -31,12 +41,30 @@ export function JobProgress({ job }: { job: Job }) {
       <div className="mb-4 flex items-center gap-3 text-primary-hover">
         <LoaderCircle className="h-5 w-5 animate-spin" />
         <div>
-          <p className="font-semibold">{job.status.replaceAll("_", " ")}</p>
-          <p className="text-sm">{job.message}</p>
+          <p className="font-semibold">
+            {currentJob.status.replaceAll("_", " ")}
+          </p>
+          <p className="text-sm">{currentJob.message}</p>
         </div>
-        <span className="ml-auto text-sm font-bold">{job.progress}%</span>
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-sm font-bold">{currentJob.progress}%</span>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => cancel.mutate()}
+            disabled={cancel.isPending}
+          >
+            {cancel.isPending ? "Cancelling…" : "Cancel job"}
+          </Button>
+        </div>
       </div>
-      <Progress value={job.progress} />
+      <Progress value={currentJob.progress} />
+      {cancel.error instanceof Error ? (
+        <p className="mt-3 text-sm text-red-700" role="alert">
+          {cancel.error.message}
+        </p>
+      ) : null}
     </div>
   );
 }

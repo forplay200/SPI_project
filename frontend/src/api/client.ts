@@ -104,6 +104,8 @@ export const api = {
     request<Job>(`/projects/${id}/render`, { method: "POST" }),
   getDraft: (id: string) => request<Draft>(`/projects/${id}/draft`),
   getJob: (id: string) => request<Job>(`/jobs/${id}`),
+  cancelJob: (id: string) =>
+    request<Job>(`/jobs/${id}/cancel`, { method: "POST" }),
   submitReview: (id: string, payload: Record<string, unknown>) =>
     request<Record<string, unknown>>(`/projects/${id}/review`, {
       method: "POST",

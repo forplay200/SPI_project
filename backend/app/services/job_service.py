@@ -123,6 +123,8 @@ class JobService:
     def _update(self, job_id: str, **changes: Any) -> None:
         with self._lock:
             record = self._jobs[job_id]
+            if record.status in TERMINAL_JOB_STATES:
+                return
             self._jobs[job_id] = replace(record, updated_at=utc_now(), **changes)
 
     def get(self, job_id: str) -> JobResponse:
