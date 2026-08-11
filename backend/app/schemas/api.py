@@ -108,6 +108,13 @@ class CameraGroupUpdate(BaseModel):
     master_camera: str
     continue_with_human_verification: bool = False
 
+    @field_validator("camera_ids")
+    @classmethod
+    def camera_ids_must_be_unique(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("camera_ids must be unique")
+        return value
+
 
 class SyncConfirmRequest(BaseModel):
     camera_id: str

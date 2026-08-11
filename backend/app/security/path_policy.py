@@ -24,8 +24,16 @@ class PathPolicy:
 
     def require_registered_file(self, value: str | Path, registered: set[Path]) -> Path:
         resolved = Path(value).resolve()
-        allowed = {path.resolve() for path in registered}
-        if resolved not in allowed or not resolved.is_file():
+        allowed = {
+            path.resolve()
+            for path in registered
+            if self._within(path.resolve(), self.project_root)
+        }
+        if (
+            not self._within(resolved, self.project_root)
+            or resolved not in allowed
+            or not resolved.is_file()
+        ):
             raise InputFileError(
                 "The requested local file is not registered for this project."
             )

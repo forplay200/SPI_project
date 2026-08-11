@@ -15,6 +15,7 @@ from backend.app.services.project_service import ProjectService
 from src.camera_grouping import group_camera_sources
 from src.edl import parse_edl_data, validate_edl
 from src.edl_generator import calculate_duration_metrics, generate_edl
+from src.errors import InputFileError
 from src.evidence import sha256_file
 from src.json_utils import read_json_object, write_json_atomic
 from src.media_probe import probe_cameras, probe_video
@@ -927,17 +928,23 @@ class AutomationService:
         result = []
         for key, raw in sorted(project.artifacts.items()):
             path = Path(raw)
+            try:
+                safe_path = self.path_policy.require_registered_file(path, {path})
+            except InputFileError:
+                safe_path = None
             label, category = labels.get(key, (key.replace("_", " ").title(), "other"))
             result.append(
                 {
                     "id": key,
                     "label": label,
                     "category": category,
-                    "path": str(path),
+                    "path": str(safe_path) if safe_path else "",
                     "media_type": (
-                        "application/json" if path.suffix == ".json" else "video/mp4"
+                        "application/json"
+                        if safe_path and safe_path.suffix == ".json"
+                        else "video/mp4"
                     ),
-                    "exists": path.is_file(),
+                    "exists": safe_path is not None,
                 }
             )
         return result
@@ -959,6 +966,12 @@ class AutomationService:
     def evidence_payload(self, project_id: str, evidence_id: str) -> dict[str, Any]:
         files = self.registered_files(project_id)
         path = files.get(evidence_id)
-        if path is None or path.suffix.casefold() != ".json" or not path.is_file():
+        if path is None:
+            raise FileNotFoundError(evidence_id)
+        try:
+            path = self.path_policy.require_registered_file(path, set(files.values()))
+        except InputFileError as exc:
+            raise FileNotFoundError(evidence_id) from exc
+        if path.suffix.casefold() != ".json":
             raise FileNotFoundError(evidence_id)
         return read_json_object(path, label="Evidence")

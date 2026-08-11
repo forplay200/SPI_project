@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
@@ -25,9 +26,23 @@ from backend.app.schemas.api import (
 from backend.app.services.automation_service import AutomationService
 from backend.app.services.job_service import JobNotFoundError, JobService
 from backend.app.services.project_service import ProjectNotFoundError, ProjectService
+from src.errors import InputFileError
 from src.preflight import check_dependencies
 
 router = APIRouter()
+
+
+def _registered_file(
+    automation: AutomationService, project_id: str, file_id: str, detail: str
+) -> Path:
+    files = automation.registered_files(project_id)
+    path = files.get(file_id)
+    if path is None:
+        raise HTTPException(404, detail)
+    try:
+        return automation.path_policy.require_registered_file(path, set(files.values()))
+    except InputFileError as exc:
+        raise HTTPException(404, detail) from exc
 
 
 def _services(request: Request) -> tuple[ProjectService, JobService, AutomationService]:
@@ -192,9 +207,12 @@ def reject_sync(
 @router.get("/projects/{project_id}/sync/preview/{camera_id}")
 def sync_preview(project_id: str, camera_id: str, request: Request) -> FileResponse:
     _, _, automation = _services(request)
-    path = automation.registered_files(project_id).get(f"camera-{camera_id}")
-    if path is None or not path.is_file():
-        raise HTTPException(404, "Camera media is not registered for this project.")
+    path = _registered_file(
+        automation,
+        project_id,
+        f"camera-{camera_id}",
+        "Camera media is not registered for this project.",
+    )
     return FileResponse(path, media_type="video/mp4", filename=path.name)
 
 
@@ -257,9 +275,9 @@ def get_draft(project_id: str, request: Request) -> dict[str, Any]:
 @router.get("/projects/{project_id}/draft/media")
 def get_draft_media(project_id: str, request: Request) -> FileResponse:
     _, _, automation = _services(request)
-    path = automation.registered_files(project_id).get("draft")
-    if path is None or not path.is_file():
-        raise HTTPException(404, "No rendered draft exists for this project.")
+    path = _registered_file(
+        automation, project_id, "draft", "No rendered draft exists for this project."
+    )
     return FileResponse(path, media_type="video/mp4", filename=path.name)
 
 
@@ -324,9 +342,9 @@ def get_evidence(project_id: str, evidence_id: str, request: Request) -> dict[st
 @router.get("/projects/{project_id}/files/{file_id}")
 def download_file(project_id: str, file_id: str, request: Request) -> FileResponse:
     _, _, automation = _services(request)
-    path = automation.registered_files(project_id).get(file_id)
-    if path is None or not path.is_file():
-        raise HTTPException(404, "Registered project file not found.")
+    path = _registered_file(
+        automation, project_id, file_id, "Registered project file not found."
+    )
     media_type = "application/json" if path.suffix == ".json" else "video/mp4"
     return FileResponse(path, media_type=media_type, filename=path.name)
 
