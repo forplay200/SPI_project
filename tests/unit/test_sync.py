@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from src.errors import SyncValidationError
+from src.errors import ConfigurationError, SyncValidationError
 from src.models import CameraSource, SyncConfig
 from src.sync import apply_sync, calculate_offsets, parse_sync_config
 
@@ -46,6 +46,16 @@ class SyncTests(unittest.TestCase):
         )
         self.assertEqual(config.cue_type, "shared_audio_transient_unconfirmed_as_clap")
         self.assertEqual(config.acceptance_status, "manual_clap_review_required")
+
+    def test_rejects_non_finite_timestamp(self) -> None:
+        with self.assertRaises(ConfigurationError) as raised:
+            parse_sync_config(
+                {
+                    "master_camera": "master",
+                    "clap_timestamps": {"master": float("inf")},
+                }
+            )
+        self.assertIn("must be finite", str(raised.exception))
 
 
 if __name__ == "__main__":

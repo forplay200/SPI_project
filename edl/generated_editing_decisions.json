@@ -1,42 +1,42 @@
 {
-  "project": "kindergarten-graduation-demo-unverified-sync-smoke",
+  "project": "kindergarten-graduation-synchronisation-demo-unverified-sync-smoke",
   "timeline": [
     {
       "id": "generated-001",
-      "start": 0.84,
-      "end": 5.34,
+      "start": 0.0,
+      "end": 4.5,
       "camera": "camera_02",
       "reason": "Selected as the opening camera by the deterministic master-camera rule.",
       "action": "fade_in"
     },
     {
       "id": "generated-002",
-      "start": 5.34,
-      "end": 9.84,
+      "start": 4.5,
+      "end": 9.0,
       "camera": "camera_04",
       "reason": "Selected to satisfy the minimum multi-camera switch requirement.",
       "action": "cut",
       "overlay": {
         "type": "lower_third",
         "text": "Kindergarten Graduation Ceremony",
-        "start": 6.24,
-        "end": 8.49,
+        "start": 5.4,
+        "end": 7.65,
         "position": "bottom"
       }
     },
     {
       "id": "generated-003",
-      "start": 9.84,
-      "end": 14.34,
-      "camera": "camera_05",
+      "start": 9.0,
+      "end": 13.5,
+      "camera": "camera_02",
       "reason": "Selected to satisfy the minimum multi-camera switch requirement.",
       "action": "cut"
     },
     {
       "id": "generated-004",
-      "start": 14.34,
-      "end": 18.84,
-      "camera": "camera_02",
+      "start": 13.5,
+      "end": 18.0,
+      "camera": "camera_04",
       "reason": "Rule-based rotation selected the next available camera and applied the required closing transition.",
       "action": "fade_to_black"
     }

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import itertools
 import re
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -21,10 +21,10 @@ from .models import (
 )
 from .sync_assistant import (
     FRAME_SECONDS,
-    audio_energy_envelope,
     decode_audio_window,
     detect_transient_candidates,
     estimate_envelope_offset,
+    rank_alignment_offsets,
 )
 
 PAIR_ACCEPTANCE_SCORE = 0.56
@@ -242,15 +242,24 @@ def score_camera_pair(
     shared_count = 0
     shared_strength = 0.0
     if audio_available:
-        first_envelope = audio_energy_envelope(first_samples)
-        second_envelope = audio_energy_envelope(second_samples)
-        if len(first_envelope) and len(second_envelope):
-            offset, raw_correlation = estimate_envelope_offset(
-                first_envelope, second_envelope, maximum_offset_seconds=5.0
+        alternatives = rank_alignment_offsets(
+            first_samples,
+            second_samples,
+            maximum_offset_seconds=min(
+                60.0,
+                max(duration_a, duration_b, 5.0),
+            ),
+        )
+        if alternatives:
+            best = alternatives[0]
+            offset = float(best["offset_seconds"])
+            correlation = max(0.0, float(best["audio_correlation"]))
+            stability = float(best["offset_stability"])
+            window_offsets = tuple(
+                float(value) for value in best["window_offsets_seconds"]
             )
-            correlation = max(0.0, raw_correlation)
-            window_offsets, window_correlations, stability = _window_evidence(
-                first_envelope, second_envelope
+            window_correlations = tuple(
+                float(value) for value in best["window_correlations"]
             )
             shared_count, shared_strength = _shared_transient_evidence(
                 first_samples, second_samples, offset
@@ -372,7 +381,7 @@ def group_camera_sources(
     *,
     input_path: Path,
     ffmpeg_executable: str | Path | None = None,
-    analysis_seconds: float = 45.0,
+    analysis_seconds: float = 120.0,
     minimum_common_duration_seconds: float = 8.0,
     explicit_camera_files: tuple[Path, ...] = (),
     report_path: Path | None = None,
@@ -401,6 +410,7 @@ def group_camera_sources(
             best_score=None,
             confidence="explicit",
             reason="Explicit local camera selection bypassed only automatic grouping.",
+            suggested_videos=(),
             report_path=report_path,
         )
         _write_grouping_report(result, report_path)
@@ -421,6 +431,7 @@ def group_camera_sources(
             best_score=None,
             confidence="none",
             reason="Fewer than two eligible source videos remain after discovery.",
+            suggested_videos=(),
             report_path=report_path,
         )
         _write_grouping_report(result, report_path)
@@ -515,20 +526,69 @@ def group_camera_sources(
             "pairwise local evidence."
         )
         chosen = selected
+        suggested = ()
+        best_score = minimum_score
+    elif compatible_groups:
+        compatible_groups.sort(
+            key=lambda item: (
+                -item[1],
+                -item[2],
+                -len(item[0]),
+                tuple(video.camera_id or "" for video in item[0]),
+            )
+        )
+        chosen, minimum_score, _ = compatible_groups[0]
+        suggested = ()
+        state = CameraGroupingState.CAMERA_GROUP_SUGGESTED
+        confidence = "medium"
+        reason = (
+            "Selected the strongest threshold-passing camera group as a "
+            "medium-confidence suggestion. Human verification is required before "
+            "a normal draft; explicit smoke mode may continue with clear labels."
+        )
         best_score = minimum_score
     else:
-        state = (
-            CameraGroupingState.CAMERA_GROUP_LOW_CONFIDENCE
-            if pairs
-            else CameraGroupingState.NO_RELIABLE_CAMERA_GROUP
-        )
-        confidence = "low"
-        reason = (
-            "No pair met the audio, duration, derived-output, and weighted-score "
-            f"thresholds. Highest rejected pair: {best_pair.camera_a}/"
-            f"{best_pair.camera_b} score {best_pair.total_score:.3f}: "
-            f"{best_pair.reason}"
-        )
+        physically_possible = [
+            pair
+            for pair in pairs
+            if pair.common_usable_duration_seconds >= minimum_common_duration_seconds
+            and pair.derived_duplicate_likelihood < 0.7
+        ]
+        if physically_possible:
+            suggestion_pair = max(
+                physically_possible,
+                key=lambda pair: (
+                    pair.total_score,
+                    pair.common_usable_duration_seconds,
+                    -int(pair.camera_a.split("_")[-1]),
+                    -int(pair.camera_b.split("_")[-1]),
+                ),
+            )
+            by_id = {video.camera_id: video for video in eligible}
+            suggested = (
+                by_id[suggestion_pair.camera_a],
+                by_id[suggestion_pair.camera_b],
+            )
+            pairs = tuple(
+                replace(pair, suggested=pair == suggestion_pair) for pair in pairs
+            )
+            state = CameraGroupingState.CAMERA_GROUP_LOW_CONFIDENCE
+            confidence = "low"
+            reason = (
+                "No pair met the automatic acceptance thresholds. The highest "
+                f"physically usable pair is suggested for human verification: "
+                f"{suggestion_pair.camera_a}/{suggestion_pair.camera_b} score "
+                f"{suggestion_pair.total_score:.3f}. The operator may continue only "
+                "after explicitly accepting or changing this group."
+            )
+        else:
+            suggested = ()
+            state = CameraGroupingState.NO_RELIABLE_CAMERA_GROUP
+            confidence = "none"
+            reason = (
+                "No pair has enough physically possible common footage after "
+                "invalid and derived inputs are excluded."
+            )
         chosen = ()
         best_score = best_pair.total_score
     result = CameraGroupingResult(
@@ -546,6 +606,7 @@ def group_camera_sources(
         best_score=round(best_score, 6),
         confidence=confidence,
         reason=reason,
+        suggested_videos=suggested,
         report_path=report_path,
     )
     _write_grouping_report(result, report_path)
@@ -580,6 +641,12 @@ def _write_grouping_report(
                 video.camera_id for video in result.selected_videos
             ],
             "selected_paths": [video.relative_path for video in result.selected_videos],
+            "suggested_camera_ids": [
+                video.camera_id for video in result.suggested_videos
+            ],
+            "suggested_paths": [
+                video.relative_path for video in result.suggested_videos
+            ],
             "pairs": [asdict(pair) for pair in result.pair_scores],
             "privacy": {
                 "local_audio_only": True,

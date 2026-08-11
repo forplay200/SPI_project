@@ -1,0 +1,849 @@
+{
+  "generated_by": "automatic_preparation_layer",
+  "master_camera": "camera_01",
+  "cue_type": "no_reliable_candidate",
+  "cue_description": "Deterministic local transient candidates; every value requires human verification and is not automatically accepted as a deliberate clap.",
+  "acceptance_status": "needs_human_confirmation",
+  "clap_timestamps": {},
+  "verification_threshold_ms": 100,
+  "requires_human_verification": true,
+  "search_window_seconds": 15.0,
+  "alignment_window_seconds": 120.0,
+  "confidence_threshold": 0.65,
+  "alignment_policy": {
+    "maximum_offset_seconds": 60.0,
+    "large_offset_threshold_seconds": 10.0,
+    "minimum_overlap_ratio": 0.6,
+    "minimum_audio_correlation": 0.55,
+    "large_offset_minimum_correlation": 0.7,
+    "large_offset_minimum_stability": 0.8
+  },
+  "camera_analyses": [
+    {
+      "camera_id": "camera_01",
+      "candidates": [
+        {
+          "timestamp_seconds": 3.19,
+          "confidence": 0.103,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 5.233
+        }
+      ],
+      "selected_timestamp_seconds": null,
+      "confidence": 0.103,
+      "state": "low_confidence_candidate",
+      "requires_human_verification": true,
+      "warnings": [
+        "Individual transient prominence is below threshold; cross-camera correlation will also be evaluated."
+      ]
+    },
+    {
+      "camera_id": "camera_02",
+      "candidates": [],
+      "selected_timestamp_seconds": null,
+      "confidence": 0.0,
+      "state": "no_reliable_candidate",
+      "requires_human_verification": true,
+      "warnings": [
+        "Individual transient prominence is below threshold; cross-camera correlation will also be evaluated."
+      ]
+    },
+    {
+      "camera_id": "camera_03",
+      "candidates": [],
+      "selected_timestamp_seconds": null,
+      "confidence": 0.0,
+      "state": "no_reliable_candidate",
+      "requires_human_verification": true,
+      "warnings": [
+        "Individual transient prominence is below threshold; cross-camera correlation will also be evaluated."
+      ]
+    },
+    {
+      "camera_id": "camera_04",
+      "candidates": [
+        {
+          "timestamp_seconds": 0.39,
+          "confidence": 0.275,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 7.304
+        },
+        {
+          "timestamp_seconds": 9.67,
+          "confidence": 0.072,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 4.867
+        },
+        {
+          "timestamp_seconds": 3.75,
+          "confidence": 0.002,
+          "cue_type": "low_confidence_candidate",
+          "supporting_metric": 4.028
+        }
+      ],
+      "selected_timestamp_seconds": null,
+      "confidence": 0.275,
+      "state": "low_confidence_candidate",
+      "requires_human_verification": true,
+      "warnings": [
+        "Individual transient prominence is below threshold; cross-camera correlation will also be evaluated."
+      ]
+    }
+  ],
+  "pairwise_alignment": [
+    {
+      "camera_a": "camera_01",
+      "camera_b": "camera_02",
+      "state": "NEEDS_HUMAN_VERIFICATION",
+      "selected_offset_seconds": null,
+      "alternatives": [
+        {
+          "offset_seconds": -31.14,
+          "confidence": 0.255511,
+          "audio_correlation": 0.325891,
+          "overlap_weighted_score": 0.325891,
+          "overlap_seconds": 43.04,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            -32.02,
+            -30.2,
+            -31.28
+          ],
+          "window_correlations": [
+            0.0,
+            0.03544,
+            0.660534
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        },
+        {
+          "offset_seconds": -30.36,
+          "confidence": 0.25358,
+          "audio_correlation": 0.321639,
+          "overlap_weighted_score": 0.321639,
+          "overlap_seconds": 43.04,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            -29.38,
+            -30.2,
+            -31.14
+          ],
+          "window_correlations": [
+            0.0,
+            0.03537,
+            0.669699
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        },
+        {
+          "offset_seconds": -42.96,
+          "confidence": 0.419981,
+          "audio_correlation": 0.313372,
+          "overlap_weighted_score": 0.313372,
+          "overlap_seconds": 43.04,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.333333,
+          "supported_windows": 2,
+          "window_offsets_seconds": [
+            -42.1,
+            -43.96,
+            -43.46
+          ],
+          "window_correlations": [
+            0.0,
+            0.554158,
+            0.449187
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        },
+        {
+          "offset_seconds": -29.86,
+          "confidence": 0.245293,
+          "audio_correlation": 0.304182,
+          "overlap_weighted_score": 0.304182,
+          "overlap_seconds": 43.04,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            -29.38,
+            -30.26,
+            -30.86
+          ],
+          "window_correlations": [
+            0.0,
+            0.033644,
+            0.622064
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        },
+        {
+          "offset_seconds": -31.64,
+          "confidence": 0.235538,
+          "audio_correlation": 0.301195,
+          "overlap_weighted_score": 0.301195,
+          "overlap_seconds": 43.04,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            -32.02,
+            -32.42,
+            -31.28
+          ],
+          "window_correlations": [
+            0.0,
+            0.0,
+            0.655265
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        }
+      ],
+      "reason": "No alternative met the multi-window, overlap, and large-offset safety policy."
+    },
+    {
+      "camera_a": "camera_01",
+      "camera_b": "camera_03",
+      "state": "NEEDS_HUMAN_VERIFICATION",
+      "selected_offset_seconds": null,
+      "alternatives": [
+        {
+          "offset_seconds": -7.36,
+          "confidence": 0.420735,
+          "audio_correlation": 0.622481,
+          "overlap_weighted_score": 0.622481,
+          "overlap_seconds": 95.7,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            -7.56,
+            -7.3,
+            -7.36
+          ],
+          "window_correlations": [
+            0.122909,
+            0.162473,
+            0.834384
+          ],
+          "large_offset": false,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because fewer than two audio windows support the same offset."
+        },
+        {
+          "offset_seconds": -6.86,
+          "confidence": 0.339333,
+          "audio_correlation": 0.447539,
+          "overlap_weighted_score": 0.447539,
+          "overlap_seconds": 95.7,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            -7.56,
+            -7.3,
+            -7.36
+          ],
+          "window_correlations": [
+            0.12723,
+            0.151761,
+            0.840842
+          ],
+          "large_offset": false,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because fewer than two audio windows support the same offset."
+        },
+        {
+          "offset_seconds": -7.86,
+          "confidence": 0.319681,
+          "audio_correlation": 0.395032,
+          "overlap_weighted_score": 0.395032,
+          "overlap_seconds": 95.7,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            -7.56,
+            -7.3,
+            -7.36
+          ],
+          "window_correlations": [
+            0.123688,
+            0.167667,
+            0.829766
+          ],
+          "large_offset": false,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because fewer than two audio windows support the same offset."
+        },
+        {
+          "offset_seconds": -5.42,
+          "confidence": 0.289813,
+          "audio_correlation": 0.337045,
+          "overlap_weighted_score": 0.337045,
+          "overlap_seconds": 95.7,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.0,
+          "supported_windows": 0,
+          "window_offsets_seconds": [
+            -4.98,
+            -5.08,
+            -5.42
+          ],
+          "window_correlations": [
+            0.125047,
+            0.15257,
+            0.220972
+          ],
+          "large_offset": false,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because fewer than two audio windows support the same offset."
+        },
+        {
+          "offset_seconds": 6.02,
+          "confidence": 0.277145,
+          "audio_correlation": 0.334819,
+          "overlap_weighted_score": 0.324117,
+          "overlap_seconds": 89.68,
+          "overlap_ratio": 0.937095,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            7.02,
+            6.92,
+            6.02
+          ],
+          "window_correlations": [
+            0.131069,
+            0.13042,
+            0.481515
+          ],
+          "large_offset": false,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because fewer than two audio windows support the same offset."
+        }
+      ],
+      "reason": "No alternative met the multi-window, overlap, and large-offset safety policy."
+    },
+    {
+      "camera_a": "camera_01",
+      "camera_b": "camera_04",
+      "state": "NEEDS_HUMAN_VERIFICATION",
+      "selected_offset_seconds": null,
+      "alternatives": [
+        {
+          "offset_seconds": -17.78,
+          "confidence": 0.761525,
+          "audio_correlation": 0.609133,
+          "overlap_weighted_score": 0.609133,
+          "overlap_seconds": 97.1,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.981144,
+          "supported_windows": 3,
+          "window_offsets_seconds": [
+            -17.76,
+            -17.78,
+            -17.78
+          ],
+          "window_correlations": [
+            0.285596,
+            0.846382,
+            0.764745
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        },
+        {
+          "offset_seconds": -18.28,
+          "confidence": 0.698812,
+          "audio_correlation": 0.465263,
+          "overlap_weighted_score": 0.465263,
+          "overlap_seconds": 97.1,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.981144,
+          "supported_windows": 3,
+          "window_offsets_seconds": [
+            -17.76,
+            -17.78,
+            -17.78
+          ],
+          "window_correlations": [
+            0.260037,
+            0.845636,
+            0.772859
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        },
+        {
+          "offset_seconds": -17.28,
+          "confidence": 0.698161,
+          "audio_correlation": 0.456277,
+          "overlap_weighted_score": 0.456277,
+          "overlap_seconds": 97.1,
+          "overlap_ratio": 1.0,
+          "offset_stability": 1.0,
+          "supported_windows": 3,
+          "window_offsets_seconds": [
+            -17.78,
+            -17.78,
+            -17.78
+          ],
+          "window_correlations": [
+            0.278893,
+            0.845851,
+            0.771346
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        },
+        {
+          "offset_seconds": -18.78,
+          "confidence": 0.614449,
+          "audio_correlation": 0.417744,
+          "overlap_weighted_score": 0.417744,
+          "overlap_seconds": 97.1,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.666667,
+          "supported_windows": 2,
+          "window_offsets_seconds": [
+            -17.78,
+            -17.78,
+            -17.78
+          ],
+          "window_correlations": [
+            0.242218,
+            0.846296,
+            0.772525
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        },
+        {
+          "offset_seconds": -16.78,
+          "confidence": 0.673624,
+          "audio_correlation": 0.405367,
+          "overlap_weighted_score": 0.405367,
+          "overlap_seconds": 97.1,
+          "overlap_ratio": 1.0,
+          "offset_stability": 1.0,
+          "supported_windows": 3,
+          "window_offsets_seconds": [
+            -17.78,
+            -17.78,
+            -17.78
+          ],
+          "window_correlations": [
+            0.282724,
+            0.848342,
+            0.764836
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        }
+      ],
+      "reason": "No alternative met the multi-window, overlap, and large-offset safety policy."
+    },
+    {
+      "camera_a": "camera_02",
+      "camera_b": "camera_03",
+      "state": "NEEDS_HUMAN_VERIFICATION",
+      "selected_offset_seconds": null,
+      "alternatives": [
+        {
+          "offset_seconds": 27.3,
+          "confidence": 0.324723,
+          "audio_correlation": 0.423324,
+          "overlap_weighted_score": 0.423324,
+          "overlap_seconds": 43.04,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            27.24,
+            27.96,
+            27.56
+          ],
+          "window_correlations": [
+            0.136907,
+            0.121746,
+            0.470627
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        },
+        {
+          "offset_seconds": 27.8,
+          "confidence": 0.324805,
+          "audio_correlation": 0.406462,
+          "overlap_weighted_score": 0.406462,
+          "overlap_seconds": 43.04,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            27.24,
+            28.6,
+            27.76
+          ],
+          "window_correlations": [
+            0.151313,
+            0.16759,
+            0.431496
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        },
+        {
+          "offset_seconds": 26.8,
+          "confidence": 0.301807,
+          "audio_correlation": 0.379535,
+          "overlap_weighted_score": 0.379535,
+          "overlap_seconds": 43.04,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            27.16,
+            27.8,
+            26.06
+          ],
+          "window_correlations": [
+            0.124063,
+            0.109171,
+            0.476164
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        },
+        {
+          "offset_seconds": 29.26,
+          "confidence": 0.32397,
+          "audio_correlation": 0.366446,
+          "overlap_weighted_score": 0.366446,
+          "overlap_seconds": 43.04,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            29.92,
+            29.14,
+            28.52
+          ],
+          "window_correlations": [
+            0.257777,
+            0.196972,
+            0.236276
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        },
+        {
+          "offset_seconds": 28.36,
+          "confidence": 0.319193,
+          "audio_correlation": 0.364532,
+          "overlap_weighted_score": 0.364532,
+          "overlap_seconds": 43.04,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            29.22,
+            29.14,
+            27.76
+          ],
+          "window_correlations": [
+            0.15644,
+            0.220612,
+            0.413151
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        }
+      ],
+      "reason": "No alternative met the multi-window, overlap, and large-offset safety policy."
+    },
+    {
+      "camera_a": "camera_02",
+      "camera_b": "camera_04",
+      "state": "STABLE_OFFSET_SUGGESTION",
+      "selected_offset_seconds": 39.64,
+      "alternatives": [
+        {
+          "offset_seconds": 39.64,
+          "confidence": 0.874646,
+          "audio_correlation": 0.825633,
+          "overlap_weighted_score": 0.825633,
+          "overlap_seconds": 43.04,
+          "overlap_ratio": 1.0,
+          "offset_stability": 1.0,
+          "supported_windows": 3,
+          "window_offsets_seconds": [
+            39.64,
+            39.64,
+            39.64
+          ],
+          "window_correlations": [
+            0.812447,
+            0.570153,
+            0.831103
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": true,
+          "reason": "Accepted as an offset suggestion from stable multi-window audio alignment; the cue still requires human verification."
+        },
+        {
+          "offset_seconds": 39.14,
+          "confidence": 0.837099,
+          "audio_correlation": 0.740259,
+          "overlap_weighted_score": 0.740259,
+          "overlap_seconds": 43.04,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.981144,
+          "supported_windows": 3,
+          "window_offsets_seconds": [
+            39.64,
+            39.64,
+            39.62
+          ],
+          "window_correlations": [
+            0.83125,
+            0.57899,
+            0.831013
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": true,
+          "reason": "Accepted as an offset suggestion from stable multi-window audio alignment; the cue still requires human verification."
+        },
+        {
+          "offset_seconds": 40.14,
+          "confidence": 0.813466,
+          "audio_correlation": 0.688836,
+          "overlap_weighted_score": 0.688836,
+          "overlap_seconds": 43.04,
+          "overlap_ratio": 1.0,
+          "offset_stability": 1.0,
+          "supported_windows": 3,
+          "window_offsets_seconds": [
+            39.64,
+            39.64,
+            39.64
+          ],
+          "window_correlations": [
+            0.81396,
+            0.597632,
+            0.829463
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        },
+        {
+          "offset_seconds": 38.64,
+          "confidence": 0.797722,
+          "audio_correlation": 0.652224,
+          "overlap_weighted_score": 0.652224,
+          "overlap_seconds": 43.04,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.981144,
+          "supported_windows": 3,
+          "window_offsets_seconds": [
+            39.64,
+            39.64,
+            39.62
+          ],
+          "window_correlations": [
+            0.847729,
+            0.61068,
+            0.831969
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        },
+        {
+          "offset_seconds": 38.14,
+          "confidence": 0.514196,
+          "audio_correlation": 0.602645,
+          "overlap_weighted_score": 0.602645,
+          "overlap_seconds": 43.04,
+          "overlap_ratio": 1.0,
+          "offset_stability": 0.0,
+          "supported_windows": 3,
+          "window_offsets_seconds": [
+            39.08,
+            39.1,
+            37.66
+          ],
+          "window_correlations": [
+            0.769453,
+            0.486149,
+            0.572022
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        }
+      ],
+      "reason": "Accepted as an offset suggestion from stable multi-window audio alignment; the cue still requires human verification."
+    },
+    {
+      "camera_a": "camera_03",
+      "camera_b": "camera_04",
+      "state": "NEEDS_HUMAN_VERIFICATION",
+      "selected_offset_seconds": null,
+      "alternatives": [
+        {
+          "offset_seconds": -10.38,
+          "confidence": 0.526298,
+          "audio_correlation": 0.496039,
+          "overlap_weighted_score": 0.468366,
+          "overlap_seconds": 85.32,
+          "overlap_ratio": 0.891536,
+          "offset_stability": 0.626667,
+          "supported_windows": 2,
+          "window_offsets_seconds": [
+            -9.62,
+            -10.48,
+            -10.42
+          ],
+          "window_correlations": [
+            0.124208,
+            0.354374,
+            0.751022
+          ],
+          "large_offset": true,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because a large offset needs stronger audio correlation."
+        },
+        {
+          "offset_seconds": -2.2,
+          "confidence": 0.349665,
+          "audio_correlation": 0.471308,
+          "overlap_weighted_score": 0.465859,
+          "overlap_seconds": 93.5,
+          "overlap_ratio": 0.977011,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            -2.04,
+            -2.92,
+            -2.2
+          ],
+          "window_correlations": [
+            0.048527,
+            0.350367,
+            0.1595
+          ],
+          "large_offset": false,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because fewer than two audio windows support the same offset."
+        },
+        {
+          "offset_seconds": -1.6,
+          "confidence": 0.343435,
+          "audio_correlation": 0.466219,
+          "overlap_weighted_score": 0.462305,
+          "overlap_seconds": 94.1,
+          "overlap_ratio": 0.983281,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            -1.66,
+            -2.38,
+            -2.56
+          ],
+          "window_correlations": [
+            0.063831,
+            0.335477,
+            0.141233
+          ],
+          "large_offset": false,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because fewer than two audio windows support the same offset."
+        },
+        {
+          "offset_seconds": -1.08,
+          "confidence": 0.335106,
+          "audio_correlation": 0.46409,
+          "overlap_weighted_score": 0.461464,
+          "overlap_seconds": 94.62,
+          "overlap_ratio": 0.988715,
+          "offset_stability": 0.0,
+          "supported_windows": 1,
+          "window_offsets_seconds": [
+            -0.08,
+            -2.08,
+            -0.12
+          ],
+          "window_correlations": [
+            0.109574,
+            0.291027,
+            0.081877
+          ],
+          "large_offset": false,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because fewer than two audio windows support the same offset."
+        },
+        {
+          "offset_seconds": -0.14,
+          "confidence": 0.33467,
+          "audio_correlation": 0.457127,
+          "overlap_weighted_score": 0.456793,
+          "overlap_seconds": 95.56,
+          "overlap_ratio": 0.998537,
+          "offset_stability": 0.0,
+          "supported_windows": 0,
+          "window_offsets_seconds": [
+            -0.08,
+            -1.1,
+            0.8
+          ],
+          "window_correlations": [
+            0.116435,
+            0.159931,
+            0.103211
+          ],
+          "large_offset": false,
+          "accepted_for_automatic_use": false,
+          "reason": "Rejected for automatic use because fewer than two audio windows support the same offset."
+        }
+      ],
+      "reason": "No alternative met the multi-window, overlap, and large-offset safety policy."
+    }
+  ],
+  "sync_sanity": {
+    "status": "INCOMPLETE",
+    "offset_formula": "camera timestamp - master timestamp",
+    "offsets_seconds": {},
+    "common_usable_duration_seconds": null,
+    "zero_offset_common_duration_seconds": null,
+    "overlap_preservation_ratio": null,
+    "warnings": []
+  },
+  "manual_confirmations": {}
+}

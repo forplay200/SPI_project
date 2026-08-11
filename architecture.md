@@ -1239,9 +1239,10 @@ pair before local audio analysis.
 ### 22.2 Camera grouping: `src/camera_grouping.py`
 
 Every eligible two-file combination is analyzed. Each audio stream is decoded
-once, locally, to a bounded 8 kHz mono representation and cached, so two to ten
-inputs require one decode per source rather than one decode per pair. Grouping
-does not decode full-resolution video.
+once, locally, to an 8 kHz mono representation bounded by the configurable
+alignment window (120 seconds by default) and cached, so two to ten inputs require
+one decode per source rather than one decode per pair. Grouping does not decode
+full-resolution video.
 
 For each pair the component records:
 
@@ -1276,17 +1277,29 @@ confidence, and acceptance or rejection reason.
 
 Grouping states are `CAMERA_GROUP_CONFIRMED`, `CAMERA_GROUP_SUGGESTED`,
 `CAMERA_GROUP_LOW_CONFIDENCE`, `NO_RELIABLE_CAMERA_GROUP`, and
-`DERIVED_OUTPUTS_ONLY`. Medium confidence can support only explicit smoke mode;
-low confidence returns `NEEDS_CAMERA_SELECTION` and lists the highest rejected
-pairs. Repeated `--camera-file` values provide a fallback selection but bypass
-none of probing, sync, duration, EDL, privacy, smoke, or approval controls.
+`DERIVED_OUTPUTS_ONLY`. Medium confidence can support only explicit smoke mode.
+A low-confidence pair with real temporal overlap remains a ranked suggestion and
+can proceed only through an explicit `--continue-low-confidence` human-verification
+choice; pairs with no usable overlap remain hard blocked. Repeated `--camera-file`
+values provide a fallback selection but bypass none of probing, sync, duration,
+EDL, privacy, smoke, or approval controls.
 
 ### 22.3 Synchronization assistant: `src/sync_assistant.py`
 
-The assistant decodes only a configurable initial audio window (15 seconds by
-default) to 8 kHz mono samples using local FFmpeg. It calculates short-time RMS
-energy, robust transient prominence, ranked peak candidates, and cross-camera
-envelope correlation. Processing is deterministic and local.
+The assistant decodes audio locally to 8 kHz mono samples using FFmpeg. A
+configurable initial window (15 seconds by default) provides short-time RMS
+energy and robust ranked transient candidates. A separate alignment window (120
+seconds by default) estimates pair offsets from normalized log-energy envelopes,
+without decoding video. Processing is deterministic and local.
+
+Pair alignment is overlap aware. Candidate lags preserving less than 60% of the
+shorter recording are discarded so a tiny matching tail cannot outrank an honest
+full-event alignment. The report ranks separated alternatives and records the
+estimated offset, correlation, overlap seconds and ratio, overlap-weighted score,
+early/middle/late window estimates, and offset stability. Offsets of at least 10
+seconds require stronger correlation and stable evidence in multiple windows.
+This signal evidence can identify a shared audio transient but does not identify
+its semantic cause.
 
 Candidate states are honest:
 
@@ -1301,8 +1314,14 @@ transient is not labelled a verified clap. Below the documented 0.65 confidence
 threshold, candidate observations may be saved but no canonical timestamp is
 selected. `confirm-sync` records explicit human timestamps; all selected cameras
 must be confirmed before the configuration becomes `manual_clap` / `verified`.
-The existing constant-offset formula and ±100 ms manual acceptance target remain
-unchanged.
+The constant-offset formula remains `source_time = master_time + offset`, with
+`offset = camera_cue_timestamp - master_cue_timestamp`. Confirmation calculates
+the exact common start, end, duration, zero-offset duration, and preservation
+ratio from probed source bounds. Non-finite, negative, or out-of-source cue times
+are invalid. Large offsets or selections that discard more than 30% of the
+zero-offset common timeline require `--acknowledge-sync-risk`, which records the
+operator's acknowledgement but does not change automatic evidence into a verified
+clap. The ±100 ms manual acceptance target remains unchanged.
 
 Camera grouping confidence establishes only likely shared event content. It does
 not prove that a transient is a deliberate clap. Synchronization confidence,
@@ -1325,8 +1344,13 @@ are stored in the project configuration, copied unchanged into the
 renderer-neutral render plan, and rendered by both MoviePy and FFmpeg as the
 mandatory closing-credit screen.
 
-The EDL generator calculates the synchronized common timeline after offsets. It
-never creates a source interval outside a probed duration. Normal proposals target
+The EDL generator calculates synchronized per-camera coverage after offsets. It
+reports all-camera common overlap for synchronization diagnostics, the union of
+camera timelines as total event coverage, and a separately constructed maximum
+renderable duration. Common overlap does not limit editing. A generated interval
+is usable when its assigned camera covers that complete interval, and the
+renderer-neutral render plan remains the authoritative source-boundary check.
+It never creates a source interval outside a probed duration. Normal proposals target
 60–180 seconds, use 8-second minimum, 12-second preferred, and 20-second maximum
 shots, alternate available cameras, include at least three switches, create
 contiguous non-overlapping segments, add a lower-third, start with `fade_in`, end
@@ -1335,7 +1359,7 @@ with `fade_to_black`, and explain every decision.
 Generation metadata is stored in a separate report and states that the mechanism
 is deterministic rule-based automation, not machine learning. The serialized EDL
 is reloaded through the existing EDL validator and render-plan boundary checks.
-When duration is impossible, the report identifies the maximum honest duration
+When duration is impossible, the report identifies the maximum renderable duration
 and limiting sources. Footage is never looped, frozen, slowed, duplicated, or
 padded to manufacture compliance.
 
@@ -1369,7 +1393,7 @@ The typed outcome states are:
 - `READY_FOR_SMOKE_ONLY`
 - `NEEDS_CAMERA_SELECTION`
 - `NEEDS_SYNC_CONFIRMATION`
-- `INSUFFICIENT_COMMON_DURATION`
+- `INSUFFICIENT_RENDERABLE_DURATION`
 - `INVALID_INPUT`
 - `DRAFT_RENDERED`
 - `DRAFT_RENDERED_WITH_UNVERIFIED_SYNC`
@@ -1377,3 +1401,146 @@ The typed outcome states are:
 These states distinguish successful preparation from submission readiness.
 Rendering a smoke or unverified-sync draft is technical success only; complete
 human visual, audio, privacy, licensing, and clap verification is still mandatory.
+
+## 23. Guided Automation Workflow UI
+
+The approved `DESIGN.md` interface is an additive presentation and application
+layer. It does not replace the CLI or any domain implementation under `src/`.
+
+### 23.1 Components and data flow
+
+```text
+React / TypeScript wizard
+        |
+        | typed JSON over localhost
+        v
+FastAPI routes and in-process job manager
+        |
+        | direct Python function calls
+        v
+Existing discovery, grouping, sync, EDL, render, evidence, review, approval
+```
+
+`backend/app/main.py` constructs the local FastAPI application. Pydantic schemas
+validate requests and responses. Routes under `backend/app/api/` delegate to
+`AutomationService`, `ProjectService`, and `JobService`. They never invoke
+`python -m src.main` or another pipeline CLI subprocess.
+
+`frontend/` contains the Vite React application, Tailwind tokens, shadcn-style
+local UI primitives, typed API client, TanStack Query polling, React Router
+workflow routes, and focused Vitest tests.
+
+### 23.2 Project and path policy
+
+UI project settings are persisted locally under ignored `evidence/ui/`. Generated
+configuration, sync, and EDL files use project-specific filenames under `config/`
+and `edl/`, preserving every manual file. Browser-supplied input folders must
+resolve inside the repository. Media and evidence downloads are served only when
+the exact file is registered to the current UI project; arbitrary filesystem
+paths are not accepted.
+
+The browser directory picker does not upload files and cannot supply a trusted
+absolute path. The editable workspace-relative folder remains authoritative and
+is revalidated by FastAPI before any analysis starts.
+
+### 23.3 Background jobs
+
+The in-process job manager uses the exact approved states:
+
+- `QUEUED`
+- `DISCOVERING`
+- `PROBING_MEDIA`
+- `GROUPING_CAMERAS`
+- `ANALYSING_AUDIO`
+- `GENERATING_EDL`
+- `VALIDATING`
+- `RENDERING`
+- `VALIDATING_OUTPUT`
+- `GENERATING_EVIDENCE`
+- `COMPLETED`
+- `FAILED`
+- `CANCELLED`
+
+Progress changes only at real pipeline boundaries. The frontend polls once per
+second and stops on a terminal state. Exceptions become a structured failed job;
+no fake success response is returned. Cancellation is observed at safe boundaries,
+not by terminating renderer resources mid-write.
+
+### 23.4 Six-step guided workflow
+
+The persistent stepper implements Footage, Analysis, Synchronisation, Editing
+Plan, Draft Review, and Approval. Analysis displays every source, excluded output,
+group score, selected/master camera, and expandable pair evidence. A human may
+replace only the grouping selection; probing and downstream controls still run.
+For a physically valid low-confidence suggestion the UI preselects the suggested
+pair and offers an explicit **Continue with Human Verification** action. It does
+not relabel that choice as confirmed or bypass later sync checks.
+
+Synchronisation displays ranked candidates, estimated offsets, confidence,
+cue type, warnings, manual state, multi-window alternatives, correlation,
+stability, and preserved overlap. It also displays the exact common-timeline
+sanity result before EDL generation. Confirm and reject actions update the existing
+generated sync contract. Large-offset confirmation requires a separate checkbox
+stating that the operator compared the same cue and accepts the displayed overlap
+risk. The media preview opens two seconds before a candidate where browser
+playback permits it. The waveform graphic is a placeholder for future decoded
+waveform samples and is labelled as such.
+
+The editing-plan screen exposes a simplified, label-and-colour timeline plus
+limited camera, boundary, reason, and transition fields. Local feedback runs on
+each edit; the existing semantic validator and render-plan boundary checks remain
+authoritative before save and render.
+
+Draft Review serves only a registered draft, shows probed output metadata,
+renderer, sync, and compliance states, and persists checklist progress in local
+browser storage. The submitted record still uses `src.review.record_review`.
+
+Approval computes explicit blockers for smoke mode, unverified sync, missing or
+invalid duration evidence, incomplete review, ineligible filename, and missing
+draft. When eligible, it calls `promote_approved_draft`; the exact reviewed bytes
+are checksum-verified and copied without rerendering. Evidence is viewable,
+downloadable, expandable as JSON, and copyable by local path.
+
+### 23.5 Confidence and privacy behavior
+
+Camera-group confidence establishes likely shared event footage only. It never
+verifies a clap. The UI retains `needs_human_confirmation`, smoke labels, warnings,
+and approval restrictions from the Python pipeline. All communication defaults to
+localhost. No cloud call, upload, face recognition, identity analysis, emotion
+analysis, biometric inference, autonomous approval, or publication was added.
+
+## 24. Coverage-Based Renderability
+
+The accepted architecture decision is recorded in
+`docs/adr/0001-coverage-based-renderability.md`.
+
+After synchronization, each camera has one interval on the master timeline:
+
+```text
+camera master start = -offset
+camera master end   = source duration - offset
+```
+
+`common_overlap_duration` is the intersection of every selected interval and is
+used only for synchronization diagnostics. `total_event_coverage` is the length
+of the merged union of those intervals. `maximum_renderable_duration` is found by
+searching continuous non-negative coverage windows and constructing a
+deterministic segment-to-camera assignment that preserves minimum shot length,
+two-camera usage, three switches, and supported opening/closing transitions.
+Title and credit screens are included in maximum renderable output duration.
+
+```text
+synchronized camera intervals
+        | intersection -> common overlap (sync evidence)
+        | merged union  -> total event coverage
+        | continuous windows + shot policy + camera assignment
+        v
+maximum renderable duration -> generated EDL -> existing validators -> render plan
+```
+
+The generator does not substitute the union length for renderability. Gaps are
+not filled, and every proposed shot must be wholly covered by its assigned
+camera. `build_render_plan` continues to map that shot to source time and reject
+negative or over-duration source boundaries. The API and evidence expose all
+three values; the UI explains their distinct purposes. Requests above the true
+limit return `INSUFFICIENT_RENDERABLE_DURATION`.

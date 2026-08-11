@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable
 from dataclasses import replace
 from pathlib import Path
@@ -31,10 +32,21 @@ def parse_sync_config(data: dict[str, Any]) -> SyncConfig:
                 continue
             if isinstance(raw_time, bool) or not isinstance(raw_time, (int, float)):
                 errors.append(f"Clap timestamp for {camera_id!r} must be numeric.")
-            elif raw_time < 0:
-                errors.append(f"Clap timestamp for {camera_id!r} cannot be negative.")
             else:
-                clap_timestamps[camera_id] = float(raw_time)
+                try:
+                    is_finite = math.isfinite(float(raw_time))
+                except (OverflowError, ValueError):
+                    is_finite = False
+                if not is_finite:
+                    errors.append(
+                        f"Clap timestamp for {camera_id!r} must be finite."
+                    )
+                elif raw_time < 0:
+                    errors.append(
+                        f"Clap timestamp for {camera_id!r} cannot be negative."
+                    )
+                else:
+                    clap_timestamps[camera_id] = float(raw_time)
     threshold = data.get("verification_threshold_ms", 100)
     if isinstance(threshold, bool) or not isinstance(threshold, int) or threshold <= 0:
         errors.append("verification_threshold_ms must be a positive integer.")

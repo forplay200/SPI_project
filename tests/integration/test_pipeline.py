@@ -178,6 +178,15 @@ class PipelineIntegrationTests(unittest.TestCase):
             self.assertTrue(metadata.has_audio)
             self.assertAlmostEqual(metadata.duration_seconds, 5, delta=0.75)
             self.assertTrue(evidence.is_file())
+            report = json.loads(evidence.read_text(encoding="utf-8"))
+            self.assertEqual(
+                {
+                    "common_overlap_duration",
+                    "total_event_coverage",
+                    "maximum_renderable_duration",
+                },
+                set(report["duration_metrics"]) - {"presentation_duration"},
+            )
             self.assertFalse(list((root / "temp").glob("*.partial.mp4")))
             review_path = root / "evidence" / "approvals" / "review.json"
             record_review(

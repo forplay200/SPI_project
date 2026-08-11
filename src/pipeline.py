@@ -9,6 +9,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from .edl import load_edl, validate_edl
+from .edl_generator import calculate_duration_metrics
 from .evidence import write_preflight_evidence, write_render_evidence
 from .media_probe import MediaMetadata, probe_cameras, probe_video, validate_output
 from .models import EDL, ProjectConfig, RenderPlan, RenderResult, SyncConfig
@@ -52,6 +53,9 @@ def prepare_pipeline(
     plan = build_render_plan(config, edl)
     directories = ensure_runtime_directories(project_root)
     if write_evidence:
+        duration_metrics = calculate_duration_metrics(
+            config, allow_smoke=config.duration_policy.min_seconds < 60
+        )
         write_preflight_evidence(
             directories["reports"] / f"{_safe_name(config.project)}_preflight.json",
             project_root=project_root,
@@ -59,6 +63,7 @@ def prepare_pipeline(
             edl=edl,
             plan=plan,
             sync_config=sync_config,
+            duration_metrics=duration_metrics,
         )
     return PreparedPipeline(project_root, config, sync_config, edl, plan)
 
@@ -107,6 +112,10 @@ def render_draft(
             output_metadata=promoted_metadata,
             plan=prepared.plan,
             sync_config=prepared.sync,
+            duration_metrics=calculate_duration_metrics(
+                prepared.config,
+                allow_smoke=prepared.config.duration_policy.min_seconds < 60,
+            ),
             warnings=output_warnings,
         )
         return promoted_result, promoted_metadata, evidence_path
