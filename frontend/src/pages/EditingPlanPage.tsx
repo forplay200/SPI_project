@@ -27,12 +27,23 @@ function localErrors(edl: EDL | null): string[] {
   if (!edl) return [];
   const errors: string[] = [];
   edl.timeline.forEach((segment, index) => {
-    if (segment.end <= segment.start)
+    const validStart = Number.isFinite(segment.start) && segment.start >= 0;
+    const validEnd = Number.isFinite(segment.end) && segment.end >= 0;
+    if (!validStart)
+      errors.push(`${segment.id}: start must be a finite non-negative number.`);
+    if (!validEnd)
+      errors.push(`${segment.id}: end must be a finite non-negative number.`);
+    if (validStart && validEnd && segment.end <= segment.start)
       errors.push(`${segment.id}: end must be after start.`);
     if (!segment.reason.trim())
       errors.push(`${segment.id}: reason is required.`);
     const previous = edl.timeline[index - 1];
-    if (previous && Math.abs(previous.end - segment.start) > 0.001)
+    if (
+      previous &&
+      validStart &&
+      Number.isFinite(previous.end) &&
+      Math.abs(previous.end - segment.start) > 0.001
+    )
       errors.push(`${previous.id} and ${segment.id} must be contiguous.`);
   });
   const switches = edl.timeline
@@ -241,6 +252,7 @@ export function EditingPlanPage() {
                     <Input
                       id={`start-${segment.id}`}
                       type="number"
+                      min="0"
                       step="0.001"
                       value={segment.start}
                       onChange={(event) =>
@@ -253,6 +265,7 @@ export function EditingPlanPage() {
                     <Input
                       id={`end-${segment.id}`}
                       type="number"
+                      min="0"
                       step="0.001"
                       value={segment.end}
                       onChange={(event) =>

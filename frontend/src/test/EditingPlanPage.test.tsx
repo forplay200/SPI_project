@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it } from "vitest";
 
@@ -48,4 +48,12 @@ it("renders an explainable timeline and revalidates local edits", async () => {
   expect(
     screen.getByRole("button", { name: /Save & Validate/i }),
   ).toBeDisabled();
+  const firstStart = screen.getAllByLabelText("Start", {
+    selector: "input",
+  })[0];
+  expect(firstStart).toHaveAttribute("min", "0");
+  fireEvent.change(firstStart, { target: { value: "-1" } });
+  expect(
+    screen.getByText(/start must be a finite non-negative number/i),
+  ).toBeInTheDocument();
 });
