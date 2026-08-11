@@ -73,13 +73,18 @@ export const api = {
         acknowledge_sync_risk,
       }),
     }),
-  rejectSync: (id: string, camera_id: string, timestamp_seconds?: number) =>
+  rejectSync: (
+    id: string,
+    camera_id: string,
+    timestamp_seconds: number | undefined,
+    reason: string,
+  ) =>
     request<SyncReport>(`/projects/${id}/sync/reject`, {
       method: "POST",
       body: JSON.stringify({
         camera_id,
         timestamp_seconds,
-        reason: "Rejected during guided human verification",
+        reason,
       }),
     }),
   startEdl: (id: string) =>

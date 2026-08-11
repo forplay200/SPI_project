@@ -44,6 +44,9 @@ export function SynchronisationPage() {
   const [riskAcknowledged, setRiskAcknowledged] = useState<
     Record<string, boolean>
   >({});
+  const [rejectionReasons, setRejectionReasons] = useState<
+    Record<string, string>
+  >({});
   useEffect(() => {
     if (report.data) setTimestamps(report.data.clap_timestamps);
   }, [report.data]);
@@ -67,10 +70,12 @@ export function SynchronisationPage() {
     mutationFn: ({
       cameraId,
       timestamp,
+      reason,
     }: {
       cameraId: string;
       timestamp?: number;
-    }) => api.rejectSync(projectId, cameraId, timestamp),
+      reason: string;
+    }) => api.rejectSync(projectId, cameraId, timestamp, reason),
     onSuccess: (data) => queryClient.setQueryData(["sync", projectId], data),
   });
   const generate = useMutation({
@@ -137,6 +142,11 @@ export function SynchronisationPage() {
           {confirm.isError ? (
             <Alert tone="danger" title="Cue confirmation needs attention">
               {confirm.error.message}
+            </Alert>
+          ) : null}
+          {reject.isError ? (
+            <Alert tone="danger" title="Cue rejection needs attention">
+              {reject.error.message}
             </Alert>
           ) : null}
           {report.data.sync_sanity?.warnings.length ? (
@@ -286,12 +296,38 @@ export function SynchronisationPage() {
                         </label>
                       ) : null}
                     </div>
+                    <div>
+                      <Label htmlFor={`reject-reason-${item.camera_id}`}>
+                        Reason for rejecting candidate
+                      </Label>
+                      <Input
+                        id={`reject-reason-${item.camera_id}`}
+                        value={rejectionReasons[item.camera_id] ?? ""}
+                        placeholder="Explain why this cue is unsuitable"
+                        onChange={(event) =>
+                          setRejectionReasons((current) => ({
+                            ...current,
+                            [item.camera_id]: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"
                       className="text-danger"
+                      disabled={
+                        !rejectionReasons[item.camera_id]?.trim() ||
+                        reject.isPending
+                      }
                       onClick={() =>
-                        reject.mutate({ cameraId: item.camera_id, timestamp })
+                        reject.mutate({
+                          cameraId: item.camera_id,
+                          timestamp,
+                          reason: (
+                            rejectionReasons[item.camera_id] ?? ""
+                          ).trim(),
+                        })
                       }
                     >
                       <XCircle className="h-4 w-4" /> Reject Candidate

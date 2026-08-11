@@ -120,6 +120,14 @@ class SyncRejectRequest(BaseModel):
     timestamp_seconds: float | None = Field(default=None, ge=0)
     reason: str = Field(default="Rejected by human reviewer", min_length=1)
 
+    @field_validator("reason")
+    @classmethod
+    def strip_reason(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("reason must not be blank")
+        return value
+
 
 class EDLUpdateRequest(BaseModel):
     project: str

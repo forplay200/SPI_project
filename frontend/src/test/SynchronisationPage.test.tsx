@@ -97,6 +97,16 @@ it("keeps automatic transients unverified and exposes confirmation controls", as
     screen.getAllByRole("button", { name: /Reject Candidate/i }),
   ).toHaveLength(2);
   expect(
+    screen.getAllByRole("button", { name: /Reject Candidate/i })[0],
+  ).toBeDisabled();
+  const rejectionReason = screen.getAllByLabelText(
+    "Reason for rejecting candidate",
+  )[0];
+  await userEvent.type(rejectionReason, "The cue is not the deliberate clap.");
+  expect(
+    screen.getAllByRole("button", { name: /Reject Candidate/i })[0],
+  ).toBeEnabled();
+  expect(
     screen.getByText("Multi-window offset diagnostics"),
   ).toBeInTheDocument();
   expect(screen.getByText("105.11 s")).toBeInTheDocument();
