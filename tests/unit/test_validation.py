@@ -75,6 +75,15 @@ class ProjectConfigTests(unittest.TestCase):
                 load_project_config(path, require_camera_files=False)
             self.assertIn("cannot point inside", str(raised.exception))
 
+    def test_rejects_non_finite_numeric_values(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            data = valid_config()
+            data["duration_policy"]["min_seconds"] = float("nan")  # type: ignore[index]
+            path = self.write_config(Path(directory), data)
+            with self.assertRaises(ConfigurationError) as raised:
+                load_project_config(path)
+            self.assertIn("min_seconds must be finite", str(raised.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

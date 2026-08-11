@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 from pathlib import Path
 from typing import Any
@@ -25,7 +26,14 @@ def _number(
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         errors.append(f"{field} must be numeric.")
         return minimum
-    result = float(value)
+    try:
+        result = float(value)
+    except (OverflowError, ValueError):
+        errors.append(f"{field} must be finite.")
+        return minimum
+    if not math.isfinite(result):
+        errors.append(f"{field} must be finite.")
+        return minimum
     if result <= minimum:
         errors.append(f"{field} must be greater than {minimum}.")
     return result

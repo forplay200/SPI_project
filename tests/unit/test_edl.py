@@ -105,6 +105,16 @@ class EDLTests(unittest.TestCase):
         self.assertIn("reason", str(raised.exception))
         self.assertIn("action", str(raised.exception))
 
+    def test_rejects_non_finite_timeline_and_overlay_values(self) -> None:
+        data = valid_edl_data()
+        data["timeline"][0]["start"] = float("nan")  # type: ignore[index]
+        data["timeline"][1]["overlay"]["end"] = float("inf")  # type: ignore[index]
+        with self.assertRaises(EDLValidationError) as raised:
+            parse_edl_data(data)
+        message = str(raised.exception)
+        self.assertIn("start must be finite numeric", message)
+        self.assertIn("overlay.end must be finite numeric", message)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -18,7 +19,12 @@ from .models import (
 
 
 def _is_number(value: object) -> bool:
-    return not isinstance(value, bool) and isinstance(value, (int, float))
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(float(value))
+    except (OverflowError, ValueError):
+        return False
 
 
 def _parse_overlay(
@@ -48,10 +54,10 @@ def _parse_overlay(
         errors.append(f"Segment {segment_id!r} overlay.text must be non-empty.")
         text = ""
     if start is not None and not _is_number(start):
-        errors.append(f"Segment {segment_id!r} overlay.start must be numeric.")
+        errors.append(f"Segment {segment_id!r} overlay.start must be finite numeric.")
         start = None
     if end is not None and not _is_number(end):
-        errors.append(f"Segment {segment_id!r} overlay.end must be numeric.")
+        errors.append(f"Segment {segment_id!r} overlay.end must be finite numeric.")
         end = None
     start_value = float(start) if _is_number(start) else None
     end_value = float(end) if _is_number(end) else None
@@ -102,10 +108,10 @@ def parse_edl_data(data: dict[str, Any]) -> EDL:
         start_raw = raw.get("start")
         end_raw = raw.get("end")
         if not _is_number(start_raw):
-            errors.append(f"Segment {segment_id!r} start must be numeric.")
+            errors.append(f"Segment {segment_id!r} start must be finite numeric.")
             start_raw = 0.0
         if not _is_number(end_raw):
-            errors.append(f"Segment {segment_id!r} end must be numeric.")
+            errors.append(f"Segment {segment_id!r} end must be finite numeric.")
             end_raw = 0.0
         start, end = float(start_raw), float(end_raw)
         camera = raw.get("camera")
