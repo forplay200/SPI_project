@@ -76,7 +76,7 @@ it("shows selected cameras, excluded outputs, and pair evidence", async () => {
         },
   );
   renderProjectPage(<CameraAnalysisPage />, "/projects/project-test/analysis");
-  expect(await screen.findByText("CAMERA GROUP CONFIRMED")).toBeInTheDocument();
+  expect(await screen.findByText("Camera group confirmed")).toBeInTheDocument();
   expect(screen.getByText("final.mp4", { exact: false })).toBeInTheDocument();
   expect(screen.getByText("Audio correlation")).toBeInTheDocument();
   expect(screen.getByText("Master: camera_01")).toBeInTheDocument();

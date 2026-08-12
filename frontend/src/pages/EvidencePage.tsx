@@ -11,8 +11,10 @@ import { useParams } from "react-router-dom";
 
 import { api } from "../api/client";
 import type { EvidenceItem } from "../api/types";
+import { formatStatusLabel } from "../lib/utils";
 import { PageHeader } from "../components/PageHeader";
 import { DurationMetricsPanel } from "../components/DurationMetricsPanel";
+import { QueryState } from "../components/QueryState";
 import { Alert } from "../components/ui/alert";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -25,14 +27,20 @@ function EvidenceCard({
   projectId: string;
   item: EvidenceItem;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "success" | "error">(
+    "idle",
+  );
   const payload = useMutation({
     mutationFn: () => api.getEvidence(projectId, item.id),
   });
   const copy = async () => {
-    await navigator.clipboard.writeText(item.path);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(item.path);
+      setCopyState("success");
+      window.setTimeout(() => setCopyState("idle"), 1500);
+    } catch {
+      setCopyState("error");
+    }
   };
   return (
     <Card>
@@ -66,19 +74,32 @@ function EvidenceCard({
             Expand JSON
           </Button>
           <Button variant="ghost" size="sm" onClick={copy}>
-            {copied ? (
+            {copyState === "success" ? (
               <Check className="h-4 w-4" />
             ) : (
               <Clipboard className="h-4 w-4" />
             )}{" "}
             Copy path
           </Button>
-          <Button asChild variant="ghost" size="sm">
-            <a href={api.downloadUrl(projectId, item.id)} download>
+          {item.exists ? (
+            <Button asChild variant="ghost" size="sm">
+              <a href={api.downloadUrl(projectId, item.id)} download>
+                <Download className="h-4 w-4" /> Download
+              </a>
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" disabled>
               <Download className="h-4 w-4" /> Download
-            </a>
-          </Button>
+            </Button>
+          )}
         </div>
+        <p className="text-xs text-ink-muted" aria-live="polite">
+          {copyState === "success"
+            ? "Path copied to clipboard."
+            : copyState === "error"
+              ? "Path could not be copied. Select it manually above."
+              : ""}
+        </p>
         {payload.data ? (
           <pre className="max-h-96 overflow-auto rounded-lg bg-video p-4 text-xs leading-5 text-slate-200">
             {JSON.stringify(payload.data, null, 2)}
@@ -122,6 +143,13 @@ export function EvidencePage() {
         checksums, and local paths. It contains no face, identity, or emotion
         analysis.
       </Alert>
+      <QueryState
+        isLoading={query.isLoading}
+        error={query.error}
+        loadingTitle="Loading project evidence"
+        errorTitle="Evidence inventory could not be loaded"
+        onRetry={() => void query.refetch()}
+      />
       {analysis.data ? (
         <div className="mb-6">
           <DurationMetricsPanel
@@ -137,7 +165,7 @@ export function EvidencePage() {
             <section key={category}>
               <h2 className="mb-3 flex items-center gap-2 text-lg font-bold capitalize">
                 <FolderSearch className="h-5 w-5 text-primary" />
-                {category.replaceAll("_", " ")}
+                {formatStatusLabel(category)}
               </h2>
               <div className="grid gap-4 xl:grid-cols-2">
                 {items.map((item) => (
@@ -151,7 +179,7 @@ export function EvidencePage() {
             </section>
           ))}
         </div>
-      ) : !query.isLoading ? (
+      ) : !query.isLoading && !query.error ? (
         <Alert tone="warning" title="No evidence registered">
           Complete analysis to generate the first evidence records.
         </Alert>

@@ -1,21 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Ban,
+  Check,
   CheckCircle2,
+  Clipboard,
   ClipboardCheck,
   FileKey2,
   LockKeyhole,
 } from "lucide-react";
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { api } from "../api/client";
+import { formatStatusLabel } from "../lib/utils";
 import { PageHeader } from "../components/PageHeader";
+import { QueryState } from "../components/QueryState";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader } from "../components/ui/card";
 
 export function ApprovalPage() {
   const { projectId = "" } = useParams();
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [checksumCopyState, setChecksumCopyState] = useState<
+    "idle" | "success" | "error"
+  >("idle");
   const queryClient = useQueryClient();
   const eligibility = useQuery({
     queryKey: ["approval", projectId],
@@ -29,12 +38,28 @@ export function ApprovalPage() {
     },
   });
   const data = eligibility.data;
+  const copyChecksum = async () => {
+    if (!data?.draft_sha256) return;
+    try {
+      await navigator.clipboard.writeText(data.draft_sha256);
+      setChecksumCopyState("success");
+    } catch {
+      setChecksumCopyState("error");
+    }
+  };
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
         eyebrow="Step 6 of 6 · Approval"
         title="Final approval"
         description="Approval copies the exact reviewed bytes. It never edits, modifies, or rerenders the video."
+      />
+      <QueryState
+        isLoading={eligibility.isLoading}
+        error={eligibility.error}
+        loadingTitle="Checking approval eligibility"
+        errorTitle="Approval eligibility could not be loaded"
+        onRetry={() => void eligibility.refetch()}
       />
       {data ? (
         <div className="space-y-6">
@@ -53,7 +78,7 @@ export function ApprovalPage() {
               <CardContent>
                 <p className="text-sm text-ink-muted">Review status</p>
                 <p className="mt-2 font-bold">
-                  {data.review_status.replaceAll("_", " ")}
+                  {formatStatusLabel(data.review_status)}
                 </p>
               </CardContent>
             </Card>
@@ -61,7 +86,7 @@ export function ApprovalPage() {
               <CardContent>
                 <p className="text-sm text-ink-muted">Sync status</p>
                 <p className="mt-2 font-bold">
-                  {data.sync_status.replaceAll("_", " ")}
+                  {formatStatusLabel(data.sync_status)}
                 </p>
               </CardContent>
             </Card>
@@ -69,7 +94,7 @@ export function ApprovalPage() {
               <CardContent>
                 <p className="text-sm text-ink-muted">Compliance</p>
                 <p className="mt-2 font-bold">
-                  {data.compliance_status.replaceAll("_", " ")}
+                  {formatStatusLabel(data.compliance_status)}
                 </p>
               </CardContent>
             </Card>
@@ -112,6 +137,27 @@ export function ApprovalPage() {
               <code className="block break-all rounded-lg bg-subtle p-4 text-xs text-ink">
                 {data.draft_sha256 ?? "No draft checksum available"}
               </code>
+              <Button
+                className="mt-3"
+                variant="secondary"
+                size="sm"
+                disabled={!data.draft_sha256}
+                onClick={copyChecksum}
+              >
+                {checksumCopyState === "success" ? (
+                  <Check className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Clipboard className="h-4 w-4" aria-hidden="true" />
+                )}
+                Copy SHA-256
+              </Button>
+              <p className="mt-2 text-xs text-ink-muted" aria-live="polite">
+                {checksumCopyState === "success"
+                  ? "SHA-256 copied to clipboard."
+                  : checksumCopyState === "error"
+                    ? "SHA-256 could not be copied. Select it manually above."
+                    : ""}
+              </p>
               <p className="mt-3 text-sm text-ink-muted">
                 Promotion verifies this SHA-256 before and after copying. Any
                 change requires a new review.
@@ -129,16 +175,40 @@ export function ApprovalPage() {
               {String(approve.data.sha256)}
             </Alert>
           ) : null}
-          <div className="flex justify-end">
-            <Button
-              size="lg"
-              disabled={!data.eligible || approve.isPending}
-              onClick={() => approve.mutate()}
-            >
-              <ClipboardCheck className="h-5 w-5" /> Approve Exact Reviewed
-              Draft
-            </Button>
-          </div>
+          {isConfirming ? (
+            <Alert tone="info" title="Confirm exact-byte promotion">
+              <p>
+                This promotes the reviewed draft without editing or rerendering
+                it. Its SHA-256 must still match the review record.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => setIsConfirming(false)}
+                  disabled={approve.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => approve.mutate()}
+                  disabled={approve.isPending}
+                >
+                  <ClipboardCheck className="h-5 w-5" /> Confirm Promotion
+                </Button>
+              </div>
+            </Alert>
+          ) : (
+            <div className="flex justify-end">
+              <Button
+                size="lg"
+                disabled={!data.eligible || approve.isPending}
+                onClick={() => setIsConfirming(true)}
+              >
+                <ClipboardCheck className="h-5 w-5" /> Approve Exact Reviewed
+                Draft
+              </Button>
+            </div>
+          )}
         </div>
       ) : null}
     </div>

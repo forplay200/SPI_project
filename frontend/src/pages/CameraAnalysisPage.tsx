@@ -11,6 +11,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../api/client";
 import type { PairScore } from "../api/types";
+import { formatStatusLabel } from "../lib/utils";
 import { JobProgress } from "../components/JobProgress";
 import { DurationMetricsPanel } from "../components/DurationMetricsPanel";
 import { PageHeader } from "../components/PageHeader";
@@ -209,7 +210,7 @@ export function CameraAnalysisPage() {
           />
           <Alert
             tone={data.selected_camera_ids.length >= 2 ? "success" : "warning"}
-            title={data.grouping.state.replaceAll("_", " ")}
+            title={formatStatusLabel(data.grouping.state)}
           >
             {data.grouping.reason}
           </Alert>
@@ -336,7 +337,7 @@ export function CameraAnalysisPage() {
                       {video.relative_path}
                     </span>
                     <Badge tone="warning">
-                      {video.classification.replaceAll("_", " ")}
+                      {formatStatusLabel(video.classification)}
                     </Badge>
                     <span className="text-xs text-ink-muted">
                       {video.warnings[0]}

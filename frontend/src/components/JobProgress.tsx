@@ -3,6 +3,7 @@ import { LoaderCircle } from "lucide-react";
 
 import { api } from "../api/client";
 import type { Job } from "../api/types";
+import { formatStatusLabel } from "../lib/utils";
 import { Alert } from "./ui/alert";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
@@ -42,7 +43,7 @@ export function JobProgress({ job }: { job: Job }) {
         <LoaderCircle className="h-5 w-5 animate-spin" />
         <div>
           <p className="font-semibold">
-            {currentJob.status.replaceAll("_", " ")}
+            {formatStatusLabel(currentJob.status)}
           </p>
           <p className="text-sm">{currentJob.message}</p>
         </div>
