@@ -11,6 +11,7 @@ import { useParams } from "react-router-dom";
 
 import { api } from "../api/client";
 import type { EvidenceItem } from "../api/types";
+import { formatStatusLabel } from "../lib/utils";
 import { PageHeader } from "../components/PageHeader";
 import { DurationMetricsPanel } from "../components/DurationMetricsPanel";
 import { Alert } from "../components/ui/alert";
@@ -137,7 +138,7 @@ export function EvidencePage() {
             <section key={category}>
               <h2 className="mb-3 flex items-center gap-2 text-lg font-bold capitalize">
                 <FolderSearch className="h-5 w-5 text-primary" />
-                {category.replaceAll("_", " ")}
+                {formatStatusLabel(category)}
               </h2>
               <div className="grid gap-4 xl:grid-cols-2">
                 {items.map((item) => (

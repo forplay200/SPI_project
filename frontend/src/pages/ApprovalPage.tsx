@@ -9,6 +9,7 @@ import {
 import { useParams } from "react-router-dom";
 
 import { api } from "../api/client";
+import { formatStatusLabel } from "../lib/utils";
 import { PageHeader } from "../components/PageHeader";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
@@ -53,7 +54,7 @@ export function ApprovalPage() {
               <CardContent>
                 <p className="text-sm text-ink-muted">Review status</p>
                 <p className="mt-2 font-bold">
-                  {data.review_status.replaceAll("_", " ")}
+                  {formatStatusLabel(data.review_status)}
                 </p>
               </CardContent>
             </Card>
@@ -61,7 +62,7 @@ export function ApprovalPage() {
               <CardContent>
                 <p className="text-sm text-ink-muted">Sync status</p>
                 <p className="mt-2 font-bold">
-                  {data.sync_status.replaceAll("_", " ")}
+                  {formatStatusLabel(data.sync_status)}
                 </p>
               </CardContent>
             </Card>
@@ -69,7 +70,7 @@ export function ApprovalPage() {
               <CardContent>
                 <p className="text-sm text-ink-muted">Compliance</p>
                 <p className="mt-2 font-bold">
-                  {data.compliance_status.replaceAll("_", " ")}
+                  {formatStatusLabel(data.compliance_status)}
                 </p>
               </CardContent>
             </Card>

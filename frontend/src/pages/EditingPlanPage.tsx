@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { Input, Label, Select, Textarea } from "../components/ui/form";
 import { useCurrentProject } from "../context/ProjectContext";
 import { useJob } from "../hooks/useJob";
+import { formatStatusLabel } from "../lib/utils";
 
 function localErrors(edl: EDL | null): string[] {
   if (!edl) return [];
@@ -226,7 +227,7 @@ export function EditingPlanPage() {
                     </div>
                     {segment.overlay ? (
                       <Badge tone="primary" className="ml-auto">
-                        {segment.overlay.type.replaceAll("_", " ")}:{" "}
+                        {formatStatusLabel(segment.overlay.type)}:{" "}
                         {segment.overlay.text}
                       </Badge>
                     ) : null}

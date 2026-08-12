@@ -21,6 +21,7 @@ import { Input, Label, Select, Textarea } from "../components/ui/form";
 import { useCurrentProject } from "../context/ProjectContext";
 import { useJob } from "../hooks/useJob";
 import { readStoredJson, writeStoredJson } from "../lib/storage";
+import { formatStatusLabel } from "../lib/utils";
 
 export function DraftReviewPage() {
   const { projectId = "" } = useParams();
@@ -139,7 +140,7 @@ export function DraftReviewPage() {
                       : "success"
                   }
                 >
-                  {draft.data.compliance_state.replaceAll("_", " ")}
+                  {formatStatusLabel(draft.data.compliance_state)}
                 </Badge>
               </CardContent>
             </Card>

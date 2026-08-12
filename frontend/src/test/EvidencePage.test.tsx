@@ -30,7 +30,7 @@ it("lists evidence with duration provenance and file actions", async () => {
         ],
   );
   renderProjectPage(<EvidencePage />, "/projects/project-test/evidence");
-  expect(await screen.findByText("Camera grouping")).toBeInTheDocument();
+  expect(await screen.findAllByText("Camera grouping")).toHaveLength(2);
   expect(
     screen.getByRole("button", { name: "Expand JSON" }),
   ).toBeInTheDocument();

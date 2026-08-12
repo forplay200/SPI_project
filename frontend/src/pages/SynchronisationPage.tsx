@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { Input, Label } from "../components/ui/form";
 import { useCurrentProject } from "../context/ProjectContext";
 import { useJob } from "../hooks/useJob";
+import { formatStatusLabel } from "../lib/utils";
 
 export function SynchronisationPage() {
   const { projectId = "" } = useParams();
@@ -183,7 +184,7 @@ export function SynchronisationPage() {
                       >
                         {verified
                           ? "Manually verified"
-                          : item.state.replaceAll("_", " ")}
+                          : formatStatusLabel(item.state)}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -206,7 +207,7 @@ export function SynchronisationPage() {
                       <div>
                         <span className="text-ink-muted">Cue type</span>
                         <strong className="block text-sm">
-                          {item.state.replaceAll("_", " ")}
+                          {formatStatusLabel(item.state)}
                         </strong>
                       </div>
                     </div>
@@ -227,7 +228,7 @@ export function SynchronisationPage() {
                             <strong className="block">
                               {candidate.timestamp_seconds.toFixed(3)} s
                             </strong>
-                            {candidate.cue_type.replaceAll("_", " ")} ·{" "}
+                            {formatStatusLabel(candidate.cue_type)} ·{" "}
                             {Math.round(candidate.confidence * 100)}%
                           </button>
                         ))}
@@ -365,7 +366,7 @@ export function SynchronisationPage() {
                   >
                     <summary className="cursor-pointer font-semibold">
                       {pair.camera_a} to {pair.camera_b} -{" "}
-                      {pair.state.replaceAll("_", " ")}
+                      {formatStatusLabel(pair.state)}
                     </summary>
                     <p className="mt-2 text-sm text-ink-muted">{pair.reason}</p>
                     <div className="mt-3 space-y-2">
@@ -409,7 +410,7 @@ export function SynchronisationPage() {
                 </p>
               </div>
               <Badge tone={allVerified ? "success" : "warning"}>
-                {report.data.acceptance_status.replaceAll("_", " ")}
+                {formatStatusLabel(report.data.acceptance_status)}
               </Badge>
             </CardContent>
           </Card>
