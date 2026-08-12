@@ -10,6 +10,12 @@ export function AppShell() {
   const { data: project } = useCurrentProject();
   return (
     <div className="min-h-screen bg-background">
+      <a
+        href="#main-content"
+        className="fixed left-4 top-3 z-50 -translate-y-20 rounded-lg bg-primary px-4 py-2 font-semibold text-white shadow-lg transition-transform focus:translate-y-0"
+      >
+        Skip to main content
+      </a>
       <header className="sticky top-0 z-30 border-b border-border bg-white/95 backdrop-blur">
         <div className="mx-auto flex min-h-16 max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-6">
           <NavLink
@@ -61,7 +67,11 @@ export function AppShell() {
             ) : null}
           </div>
         </aside>
-        <main id="main-content" className="min-w-0 p-4 sm:p-6 lg:p-8">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="min-w-0 p-4 sm:p-6 lg:p-8"
+        >
           <Outlet />
         </main>
       </div>

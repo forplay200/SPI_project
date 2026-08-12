@@ -9,6 +9,7 @@ import {
 import { useParams } from "react-router-dom";
 
 import { api } from "../api/client";
+import { readStoredString, writeStoredString } from "../lib/storage";
 
 const STORAGE_KEY = "graduation-video-project-id";
 
@@ -23,12 +24,14 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const params = useParams();
   const routeId = params.projectId ?? null;
   useEffect(() => {
-    if (routeId) localStorage.setItem(STORAGE_KEY, routeId);
+    if (routeId) writeStoredString(STORAGE_KEY, routeId);
   }, [routeId]);
   const value = useMemo(
     () => ({
-      projectId: routeId ?? localStorage.getItem(STORAGE_KEY),
-      setProjectId: (id: string) => localStorage.setItem(STORAGE_KEY, id),
+      projectId: routeId ?? readStoredString(STORAGE_KEY),
+      setProjectId: (id: string) => {
+        writeStoredString(STORAGE_KEY, id);
+      },
     }),
     [routeId],
   );

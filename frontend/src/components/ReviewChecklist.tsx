@@ -27,6 +27,14 @@ export const emptyChecklist = () =>
     reviewItems.map(([key]) => [key, false]),
   ) as ReviewChecklistState;
 
+export function isReviewChecklistState(
+  value: unknown,
+): value is ReviewChecklistState {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return reviewItems.every(([key]) => typeof record[key] === "boolean");
+}
+
 export function ReviewChecklist({
   values,
   onChange,

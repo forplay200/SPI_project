@@ -115,6 +115,7 @@ export function ProjectSetupPage() {
         </Alert>
       ) : null}
       <form
+        noValidate
         onSubmit={handleSubmit((values) => submit.mutate(values))}
         className="grid gap-6 lg:grid-cols-[1fr_320px]"
       >
@@ -143,6 +144,10 @@ export function ProjectSetupPage() {
               <div className="flex gap-2">
                 <Input
                   id="input-folder"
+                  aria-invalid={Boolean(errors.input_folder)}
+                  aria-describedby={
+                    errors.input_folder ? "input-folder-error" : undefined
+                  }
                   {...register("input_folder", {
                     required: "Choose an input folder",
                   })}
@@ -172,6 +177,15 @@ export function ProjectSetupPage() {
                   ? `${selectedFiles} local files selected for visual confirmation; the backend still validates the folder path.`
                   : "The browser does not upload selected files."}
               </p>
+              {errors.input_folder ? (
+                <p
+                  id="input-folder-error"
+                  className="mt-1 text-xs text-danger"
+                  role="alert"
+                >
+                  {errors.input_folder.message}
+                </p>
+              ) : null}
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
@@ -182,12 +196,35 @@ export function ProjectSetupPage() {
                   min={mode === "smoke" ? 7 : 60}
                   max={180}
                   step={1}
+                  aria-invalid={Boolean(errors.duration_seconds)}
+                  aria-describedby={
+                    errors.duration_seconds ? "duration-error" : undefined
+                  }
                   {...register("duration_seconds", {
                     valueAsNumber: true,
-                    min: mode === "smoke" ? 7 : 60,
-                    max: 180,
+                    required: "Enter a target duration",
+                    min: {
+                      value: mode === "smoke" ? 7 : 60,
+                      message:
+                        mode === "smoke"
+                          ? "Smoke duration must be at least 7 seconds"
+                          : "Compliant drafts must be at least 60 seconds",
+                    },
+                    max: {
+                      value: 180,
+                      message: "Target duration cannot exceed 180 seconds",
+                    },
                   })}
                 />
+                {errors.duration_seconds ? (
+                  <p
+                    id="duration-error"
+                    className="mt-1 text-xs text-danger"
+                    role="alert"
+                  >
+                    {errors.duration_seconds.message}
+                  </p>
+                ) : null}
               </div>
               <div>
                 <Label htmlFor="resolution">Resolution</Label>
@@ -237,8 +274,26 @@ export function ProjectSetupPage() {
                 <Label htmlFor="credits">Closing credit text</Label>
                 <Input
                   id="credits"
-                  {...register("credits", { required: true })}
+                  aria-invalid={Boolean(errors.credits)}
+                  aria-describedby={
+                    errors.credits ? "credits-error" : undefined
+                  }
+                  {...register("credits", {
+                    required: "Enter closing credit text",
+                    validate: (value) =>
+                      value.trim().length > 0 ||
+                      "Closing credit text cannot be blank",
+                  })}
                 />
+                {errors.credits ? (
+                  <p
+                    id="credits-error"
+                    className="mt-1 text-xs text-danger"
+                    role="alert"
+                  >
+                    {errors.credits.message}
+                  </p>
+                ) : null}
               </div>
               <div>
                 <Label htmlFor="credits-duration">Credit duration</Label>
@@ -249,8 +304,34 @@ export function ProjectSetupPage() {
                   max="30"
                   step="0.1"
                   placeholder={mode === "smoke" ? "1" : "4"}
-                  {...register("credits_duration")}
+                  aria-invalid={Boolean(errors.credits_duration)}
+                  aria-describedby={
+                    errors.credits_duration
+                      ? "credits-duration-error"
+                      : undefined
+                  }
+                  {...register("credits_duration", {
+                    validate: (value) => {
+                      if (value === "") return true;
+                      const duration = Number(value);
+                      return (
+                        (Number.isFinite(duration) &&
+                          duration >= 0.1 &&
+                          duration <= 30) ||
+                        "Credit duration must be between 0.1 and 30 seconds"
+                      );
+                    },
+                  })}
                 />
+                {errors.credits_duration ? (
+                  <p
+                    id="credits-duration-error"
+                    className="mt-1 text-xs text-danger"
+                    role="alert"
+                  >
+                    {errors.credits_duration.message}
+                  </p>
+                ) : null}
               </div>
             </div>
           </CardContent>

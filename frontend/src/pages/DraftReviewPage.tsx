@@ -10,6 +10,7 @@ import { PageHeader } from "../components/PageHeader";
 import {
   ReviewChecklist,
   emptyChecklist,
+  isReviewChecklistState,
   type ReviewChecklistState,
 } from "../components/ReviewChecklist";
 import { Alert } from "../components/ui/alert";
@@ -19,6 +20,7 @@ import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { Input, Label, Select, Textarea } from "../components/ui/form";
 import { useCurrentProject } from "../context/ProjectContext";
 import { useJob } from "../hooks/useJob";
+import { readStoredJson, writeStoredJson } from "../lib/storage";
 
 export function DraftReviewPage() {
   const { projectId = "" } = useParams();
@@ -39,23 +41,16 @@ export function DraftReviewPage() {
     retry: false,
   });
   const storageKey = `review-checklist-${projectId}`;
-  const [checklist, setChecklist] = useState<ReviewChecklistState>(() => {
-    try {
-      return (
-        JSON.parse(localStorage.getItem(storageKey) ?? "null") ??
-        emptyChecklist()
-      );
-    } catch {
-      return emptyChecklist();
-    }
-  });
+  const [checklist, setChecklist] = useState<ReviewChecklistState>(() =>
+    readStoredJson(storageKey, emptyChecklist(), isReviewChecklistState),
+  );
   const [reviewer, setReviewer] = useState("");
   const [comments, setComments] = useState("");
   const [decision, setDecision] = useState<"approved" | "changes_requested">(
     "changes_requested",
   );
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(checklist));
+    writeStoredJson(storageKey, checklist);
   }, [checklist, storageKey]);
   const rerender = useMutation({
     mutationFn: () => api.startRender(projectId),

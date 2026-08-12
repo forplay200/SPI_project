@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 
 import { AppShell } from "./components/AppShell";
 import { ProjectProvider } from "./context/ProjectContext";
@@ -7,6 +7,7 @@ import { CameraAnalysisPage } from "./pages/CameraAnalysisPage";
 import { DraftReviewPage } from "./pages/DraftReviewPage";
 import { EditingPlanPage } from "./pages/EditingPlanPage";
 import { EvidencePage } from "./pages/EvidencePage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { ProjectSetupPage } from "./pages/ProjectSetupPage";
 import { SynchronisationPage } from "./pages/SynchronisationPage";
 
@@ -43,7 +44,7 @@ export default function App() {
         />
         <Route path="projects/:projectId/approval" element={<ApprovalPage />} />
         <Route path="projects/:projectId/evidence" element={<EvidencePage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   );
