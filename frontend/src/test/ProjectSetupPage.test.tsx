@@ -73,4 +73,27 @@ describe("ProjectSetupPage", () => {
     expect(screen.getAllByText("Smoke test")).toHaveLength(1);
     expect(screen.getByText(/never approval-eligible/i)).toBeInTheDocument();
   });
+
+  it("explains invalid duration and closing-credit values before submission", async () => {
+    const user = userEvent.setup();
+    const fetch = mockApi(() => project);
+    renderProjectPage(<ProjectSetupPage />, "/");
+
+    const duration = screen.getByLabelText("Target duration (seconds)");
+    await user.clear(duration);
+    await user.type(duration, "181");
+    await user.clear(screen.getByLabelText("Closing credit text"));
+    const creditDuration = screen.getByLabelText("Credit duration");
+    await user.type(creditDuration, "31");
+    await user.click(screen.getByRole("button", { name: /Analyse Footage/i }));
+
+    expect(
+      await screen.findByText("Target duration cannot exceed 180 seconds"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Enter closing credit text")).toBeInTheDocument();
+    expect(
+      screen.getByText("Credit duration must be between 0.1 and 30 seconds"),
+    ).toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });
