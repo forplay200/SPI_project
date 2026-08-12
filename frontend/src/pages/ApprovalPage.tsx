@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Ban,
+  Check,
   CheckCircle2,
+  Clipboard,
   ClipboardCheck,
   FileKey2,
   LockKeyhole,
@@ -20,6 +22,9 @@ import { Card, CardContent, CardHeader } from "../components/ui/card";
 export function ApprovalPage() {
   const { projectId = "" } = useParams();
   const [isConfirming, setIsConfirming] = useState(false);
+  const [checksumCopyState, setChecksumCopyState] = useState<
+    "idle" | "success" | "error"
+  >("idle");
   const queryClient = useQueryClient();
   const eligibility = useQuery({
     queryKey: ["approval", projectId],
@@ -33,6 +38,15 @@ export function ApprovalPage() {
     },
   });
   const data = eligibility.data;
+  const copyChecksum = async () => {
+    if (!data?.draft_sha256) return;
+    try {
+      await navigator.clipboard.writeText(data.draft_sha256);
+      setChecksumCopyState("success");
+    } catch {
+      setChecksumCopyState("error");
+    }
+  };
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
@@ -123,6 +137,27 @@ export function ApprovalPage() {
               <code className="block break-all rounded-lg bg-subtle p-4 text-xs text-ink">
                 {data.draft_sha256 ?? "No draft checksum available"}
               </code>
+              <Button
+                className="mt-3"
+                variant="secondary"
+                size="sm"
+                disabled={!data.draft_sha256}
+                onClick={copyChecksum}
+              >
+                {checksumCopyState === "success" ? (
+                  <Check className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Clipboard className="h-4 w-4" aria-hidden="true" />
+                )}
+                Copy SHA-256
+              </Button>
+              <p className="mt-2 text-xs text-ink-muted" aria-live="polite">
+                {checksumCopyState === "success"
+                  ? "SHA-256 copied to clipboard."
+                  : checksumCopyState === "error"
+                    ? "SHA-256 could not be copied. Select it manually above."
+                    : ""}
+              </p>
               <p className="mt-3 text-sm text-ink-muted">
                 Promotion verifies this SHA-256 before and after copying. Any
                 change requires a new review.

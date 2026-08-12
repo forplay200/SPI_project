@@ -60,3 +60,23 @@ it("requires confirmation before promoting the exact reviewed draft", async () =
     await screen.findByText(/Final approval completed/),
   ).toBeInTheDocument();
 });
+
+it("copies the reviewed draft checksum", async () => {
+  const checksum = "c".repeat(64);
+  mockApi(() => ({
+    eligible: true,
+    blockers: [],
+    draft_sha256: checksum,
+    review_status: "approved",
+    sync_status: "manually_verified_clap",
+    compliance_status: "compliant",
+  }));
+
+  renderProjectPage(<ApprovalPage />, "/projects/project-test/approval");
+  fireEvent.click(await screen.findByRole("button", { name: /Copy SHA-256/i }));
+
+  await waitFor(() =>
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(checksum),
+  );
+  expect(screen.getByText("SHA-256 copied to clipboard.")).toBeInTheDocument();
+});
