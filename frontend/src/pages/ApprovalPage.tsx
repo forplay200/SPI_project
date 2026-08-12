@@ -11,6 +11,7 @@ import { useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { formatStatusLabel } from "../lib/utils";
 import { PageHeader } from "../components/PageHeader";
+import { QueryState } from "../components/QueryState";
 import { Alert } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader } from "../components/ui/card";
@@ -36,6 +37,13 @@ export function ApprovalPage() {
         eyebrow="Step 6 of 6 · Approval"
         title="Final approval"
         description="Approval copies the exact reviewed bytes. It never edits, modifies, or rerenders the video."
+      />
+      <QueryState
+        isLoading={eligibility.isLoading}
+        error={eligibility.error}
+        loadingTitle="Checking approval eligibility"
+        errorTitle="Approval eligibility could not be loaded"
+        onRetry={() => void eligibility.refetch()}
       />
       {data ? (
         <div className="space-y-6">

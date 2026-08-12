@@ -14,6 +14,7 @@ import type { EvidenceItem } from "../api/types";
 import { formatStatusLabel } from "../lib/utils";
 import { PageHeader } from "../components/PageHeader";
 import { DurationMetricsPanel } from "../components/DurationMetricsPanel";
+import { QueryState } from "../components/QueryState";
 import { Alert } from "../components/ui/alert";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -123,6 +124,13 @@ export function EvidencePage() {
         checksums, and local paths. It contains no face, identity, or emotion
         analysis.
       </Alert>
+      <QueryState
+        isLoading={query.isLoading}
+        error={query.error}
+        loadingTitle="Loading project evidence"
+        errorTitle="Evidence inventory could not be loaded"
+        onRetry={() => void query.refetch()}
+      />
       {analysis.data ? (
         <div className="mb-6">
           <DurationMetricsPanel
@@ -152,7 +160,7 @@ export function EvidencePage() {
             </section>
           ))}
         </div>
-      ) : !query.isLoading ? (
+      ) : !query.isLoading && !query.error ? (
         <Alert tone="warning" title="No evidence registered">
           Complete analysis to generate the first evidence records.
         </Alert>
