@@ -6,6 +6,7 @@ import {
   FileKey2,
   LockKeyhole,
 } from "lucide-react";
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { api } from "../api/client";
@@ -18,6 +19,7 @@ import { Card, CardContent, CardHeader } from "../components/ui/card";
 
 export function ApprovalPage() {
   const { projectId = "" } = useParams();
+  const [isConfirming, setIsConfirming] = useState(false);
   const queryClient = useQueryClient();
   const eligibility = useQuery({
     queryKey: ["approval", projectId],
@@ -138,16 +140,40 @@ export function ApprovalPage() {
               {String(approve.data.sha256)}
             </Alert>
           ) : null}
-          <div className="flex justify-end">
-            <Button
-              size="lg"
-              disabled={!data.eligible || approve.isPending}
-              onClick={() => approve.mutate()}
-            >
-              <ClipboardCheck className="h-5 w-5" /> Approve Exact Reviewed
-              Draft
-            </Button>
-          </div>
+          {isConfirming ? (
+            <Alert tone="info" title="Confirm exact-byte promotion">
+              <p>
+                This promotes the reviewed draft without editing or rerendering
+                it. Its SHA-256 must still match the review record.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => setIsConfirming(false)}
+                  disabled={approve.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => approve.mutate()}
+                  disabled={approve.isPending}
+                >
+                  <ClipboardCheck className="h-5 w-5" /> Confirm Promotion
+                </Button>
+              </div>
+            </Alert>
+          ) : (
+            <div className="flex justify-end">
+              <Button
+                size="lg"
+                disabled={!data.eligible || approve.isPending}
+                onClick={() => setIsConfirming(true)}
+              >
+                <ClipboardCheck className="h-5 w-5" /> Approve Exact Reviewed
+                Draft
+              </Button>
+            </div>
+          )}
         </div>
       ) : null}
     </div>
