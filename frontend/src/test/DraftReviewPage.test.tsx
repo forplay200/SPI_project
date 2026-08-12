@@ -45,3 +45,43 @@ it("persists checklist progress and identifies restricted smoke drafts", async (
   expect(screen.getByRole("option", { name: /Approved/i })).toBeDisabled();
   expect(screen.getByText("Common Synchronized Overlap")).toBeInTheDocument();
 });
+
+it("rejects incomplete saved checklist shapes instead of treating them as approved", async () => {
+  localStorage.setItem(
+    "review-checklist-project-test",
+    JSON.stringify({ unexpected: true }),
+  );
+  mockApi((path) =>
+    path.endsWith("/projects/project-test")
+      ? { ...project, smoke_mode: false }
+      : {
+          path: "output/draft/demo_draft.mp4",
+          filename: "demo_draft.mp4",
+          sha256: "a".repeat(64),
+          metadata: {
+            duration_seconds: 90,
+            width: 1280,
+            height: 720,
+            fps: 30,
+            has_video: true,
+            has_audio: true,
+            video_codec: "h264",
+            audio_codec: "aac",
+          },
+          renderer_used: "moviepy",
+          sync_state: "verified",
+          compliance_state: "COMPLIANT",
+          human_review_required: true,
+          common_overlap_duration: 70,
+          total_event_coverage: 100,
+          maximum_renderable_duration: 90,
+        },
+  );
+
+  renderProjectPage(<DraftReviewPage />, "/projects/project-test/draft-review");
+
+  expect(
+    await screen.findByRole("checkbox", { name: /Draft opens/i }),
+  ).not.toBeChecked();
+  expect(screen.getByRole("option", { name: /Approved/i })).toBeDisabled();
+});
